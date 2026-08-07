@@ -1,0 +1,12 @@
+export { LandingNavbar } from "./landing-navbar";
+export { HeroSection } from "./hero-section";
+export { ProblemSection } from "./problem-section";
+export { SolutionSection } from "./solution-section";
+export { HowItWorks } from "./how-it-works";
+export { FeaturesSection } from "./features-section";
+export { WhyChooseUs } from "./why-choose-us";
+export { DashboardPreview } from "./dashboard-preview";
+export { Testimonials } from "./testimonials";
+export { FAQSection } from "./faq-section";
+export { CTASection } from "./cta-section";
+export { Footer } from "./footer";

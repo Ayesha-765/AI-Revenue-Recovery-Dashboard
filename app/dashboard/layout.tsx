@@ -1,16 +1,14 @@
-import Navbar from "../../components/navbar/Navbar";
-import Sidebar from "../../components/sidebar/Sidebar";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { RedirectIfNotAuthenticated } from "@/components/auth/redirect-if-not-authenticated";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <div className="flex-1">
-          <Navbar />
-          <main className="p-8">{children}</main>
-        </div>
-      </div>
-    </div>
+    <RedirectIfNotAuthenticated>
+      <DashboardShell>{children}</DashboardShell>
+    </RedirectIfNotAuthenticated>
   );
 }
