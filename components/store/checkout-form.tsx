@@ -2,35 +2,64 @@
 
 import * as React from "react";
 import { useCart } from "@/components/store/cart-context";
-import { useOrders } from "@/components/store/order-context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { CartItem, Order } from "@/data/stores";
+import { fetchStoreBySlug } from "@/lib/supabase/stores";
+import { createOrder, createOrderItems, reduceProductStock } from "@/lib/supabase/orders";
+import type { Store } from "@/lib/supabase/stores";
 
 interface CheckoutFormProps {
-  onOrderCreated?: (order: Order) => void;
+  onOrderCreated?: (order: { id: string; customerName: string; total: number; items: { product: { name: string }; quantity: number }[] }) => void;
 }
+
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  postalCode: string;
+}
+
+const emptyFormData: FormData = {
+  name: "",
+  email: "",
+  phone: "",
+  address: "",
+  city: "",
+  postalCode: "",
+};
 
 function CheckoutForm({ onOrderCreated }: CheckoutFormProps) {
   const { items, subtotal, clearCart } = useCart();
-  const { addOrder } = useOrders();
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
   const router = useRouter();
-
-  const [formData, setFormData] = React.useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    postalCode: "",
-  });
+  const [store, setStore] = React.useState<Store | null>(null);
+  const [formData, setFormData] = React.useState<FormData>(emptyFormData);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-  const validate = () => {
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function loadStore() {
+      const storeData = await fetchStoreBySlug(slug);
+      if (mounted) {
+        setStore(storeData);
+      }
+    }
+
+    loadStore();
+
+    return () => {
+      mounted = false;
+    };
+  }, [slug]);
+
+  const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.email.trim()) newErrors.email = "Email is required";
@@ -42,47 +71,85 @@ function CheckoutForm({ onOrderCreated }: CheckoutFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    setSubmitError(null);
+
+    if (!validate() || !store) return;
     setIsSubmitting(true);
 
-    const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
-    const shipping = 0;
-    const total = subtotal + shipping;
+    try {
+      const shipping = 0;
+      const total = subtotal + shipping;
 
-    const order: Order = {
-      id: orderId,
-      storeId: Array.isArray(slug) ? slug[0] : slug,
-      customer: {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
-        city: formData.city,
-        postalCode: formData.postalCode,
-      },
-      items: items as CartItem[],
-      subtotal,
-      shipping,
-      total,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
+      const orderResult = await createOrder({
+        store_id: store.id,
+        customer_name: formData.name,
+        customer_email: formData.email,
+        customer_phone: formData.phone,
+        customer_address: formData.address,
+        customer_city: formData.city,
+        customer_postal_code: formData.postalCode,
+        subtotal,
+        shipping,
+        total,
+        status: "pending",
+      });
 
-    addOrder(order);
-    clearCart();
+      if (!orderResult.success || !orderResult.order) {
+        setSubmitError(orderResult.error || "Failed to create order.");
+        setIsSubmitting(false);
+        return;
+      }
 
-    if (onOrderCreated) {
-      onOrderCreated(order);
-    } else {
-      router.push(`/store/${slug}/order-success`);
+      const orderItems = items.map((item) => ({
+        order_id: orderResult.order!.id,
+        product_id: item.product.id,
+        product_name: item.product.name,
+        product_price: item.product.price,
+        quantity: item.quantity,
+        subtotal: item.product.price * item.quantity,
+      }));
+
+      const itemsResult = await createOrderItems(orderItems);
+      if (!itemsResult.success) {
+        setSubmitError(itemsResult.error || "Failed to create order items.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      for (const item of items) {
+        const stockResult = await reduceProductStock(item.product.id, item.quantity);
+        if (!stockResult.success) {
+          setSubmitError(stockResult.error || "Failed to update stock.");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      clearCart();
+
+      if (onOrderCreated) {
+        onOrderCreated({
+          id: orderResult.order.id,
+          customerName: formData.name,
+          total,
+          items: items.map((item) => ({
+            product: { id: item.product.id, name: item.product.name, price: item.product.price },
+            quantity: item.quantity,
+          })),
+        });
+      } else {
+        router.push(`/store/${slug}/order-success?orderId=${orderResult.order.id}`);
+      }
+    } catch {
+      setSubmitError("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -111,6 +178,11 @@ function CheckoutForm({ onOrderCreated }: CheckoutFormProps) {
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-6">
         <h2 className="text-xl font-semibold text-[#1A1A1A]">Customer Information</h2>
+        {submitError && (
+          <div className="rounded-[14px] border border-[#FF5C5C]/20 bg-[#FF5C5C]/5 px-4 py-3 text-sm text-[#FF5C5C]">
+            {submitError}
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[#1A1A1A]">Full Name</label>

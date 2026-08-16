@@ -4,13 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
-import type { CartItem } from "@/data/stores";
 
 interface OrderSuccessProps {
   orderId: string;
   customerName: string;
   total: number;
-  items?: CartItem[];
+  items?: { product: { id: string; name: string; price?: number }; quantity: number }[];
 }
 
 function OrderSuccess({ orderId, customerName, total, items = [] }: OrderSuccessProps) {
@@ -46,7 +45,7 @@ function OrderSuccess({ orderId, customerName, total, items = [] }: OrderSuccess
                       {item.product.name} × {item.quantity}
                     </span>
                     <span className="font-medium text-[#1A1A1A]">
-                      ${(item.product.price * item.quantity).toFixed(2)}
+                      ${((item.product.price ?? 0) * item.quantity).toFixed(2)}
                     </span>
                   </div>
                 ))}

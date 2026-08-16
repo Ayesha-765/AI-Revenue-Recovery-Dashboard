@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import type { Order } from "@/data/stores";
-import { mockOrders } from "@/data/stores";
 
 interface OrderContextValue {
   orders: Order[];
@@ -12,7 +11,7 @@ interface OrderContextValue {
 const OrderContext = React.createContext<OrderContextValue | undefined>(undefined);
 
 function OrderProvider({ children }: { children: React.ReactNode }) {
-  const [orders, setOrders] = React.useState<Order[]>(mockOrders);
+  const [orders, setOrders] = React.useState<Order[]>([]);
 
   const addOrder = (order: Order) => {
     setOrders((prev) => [order, ...prev]);

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Search, Bell, ChevronDown, Menu } from "lucide-react";
+import { Search, Bell, ChevronDown, Menu, LogOut } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -10,7 +10,8 @@ interface TopNavbarProps {
 
 function TopNavbar({ onMenuClick }: TopNavbarProps) {
   const [notifications] = React.useState(3);
-  const { user } = useAuth();
+  const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
+  const { user, logout } = useAuth();
 
   const displayName = user?.name || user?.email?.split("@")[0] || "User";
   const initials = displayName
@@ -19,6 +20,11 @@ function TopNavbar({ onMenuClick }: TopNavbarProps) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false);
+    await logout();
+  };
 
   return (
     <div className="flex h-16 items-center justify-between border-b border-[#E8ECF3] bg-white/80 px-6 backdrop-blur-md">
@@ -57,21 +63,42 @@ function TopNavbar({ onMenuClick }: TopNavbarProps) {
           )}
         </button>
 
-        <div className="flex items-center gap-3 pl-3 border-l border-[#E8ECF3]">
+        <div className="relative flex items-center gap-3 pl-3 border-l border-[#E8ECF3]">
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium text-[#1A1A1A]">{displayName}</p>
             <p className="text-xs text-[#6B7280]">Store Owner</p>
           </div>
-          <Avatar
-            src=""
-            alt={displayName}
-            fallback={initials}
-            size="default"
-            className="border-2 border-white shadow-sm"
-          />
-          <button className="hidden sm:flex h-8 w-8 items-center justify-center rounded-[10px] text-[#6B7280] hover:bg-[#F1F5F9]">
-            <ChevronDown className="h-4 w-4" />
+          <button
+            onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            className="flex items-center gap-1"
+          >
+            <Avatar
+              src=""
+              alt={displayName}
+              fallback={initials}
+              size="default"
+              className="border-2 border-white shadow-sm"
+            />
+            <ChevronDown className="hidden sm:block h-4 w-4 text-[#6B7280]" />
           </button>
+
+          {isUserMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setIsUserMenuOpen(false)}
+              />
+              <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-[14px] border border-[#E8ECF3] bg-white py-1 shadow-lg">
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#FF5C5C] hover:bg-[#FF5C5C]/5 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

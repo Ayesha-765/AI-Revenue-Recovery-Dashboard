@@ -4,24 +4,54 @@ import * as React from "react";
 import { StoreLayout } from "@/components/store/store-layout";
 import { CheckoutForm } from "@/components/store/checkout-form";
 import { OrderSuccess } from "@/components/store/order-success";
-import { mockStores } from "@/data/stores";
-import type { Order } from "@/data/stores";
+import { fetchStoreBySlug } from "@/lib/supabase/stores";
+import type { Store } from "@/lib/supabase/stores";
 
 interface CheckoutPageProps {
   params: { slug: string };
 }
 
-function getStore(slug: string) {
-  return mockStores.find((store) => store.slug === slug) ?? null;
-}
+type CreatedOrder = {
+  id: string;
+  customerName: string;
+  total: number;
+  items: { product: { name: string }; quantity: number }[];
+};
 
 function CheckoutPage({ params }: CheckoutPageProps) {
-  const store = React.useMemo(() => getStore(params.slug), [params.slug]);
-  const [order, setOrder] = React.useState<Order | null>(null);
+  const [store, setStore] = React.useState<Store | null>(null);
+  const [order, setOrder] = React.useState<CreatedOrder | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  const handleOrderCreated = (createdOrder: Order) => {
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function loadStore() {
+      const storeData = await fetchStoreBySlug(params.slug);
+      if (mounted) {
+        setStore(storeData);
+        setIsLoading(false);
+      }
+    }
+
+    loadStore();
+
+    return () => {
+      mounted = false;
+    };
+  }, [params.slug]);
+
+  const handleOrderCreated = (createdOrder: CreatedOrder) => {
     setOrder(createdOrder);
   };
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 text-center">
+        <p className="text-[#6B7280]">Loading...</p>
+      </div>
+    );
+  }
 
   if (!store) {
     return (
@@ -36,9 +66,12 @@ function CheckoutPage({ params }: CheckoutPageProps) {
       <StoreLayout store={store}>
         <OrderSuccess
           orderId={order.id}
-          customerName={order.customer.name}
+          customerName={order.customerName}
           total={order.total}
-          items={order.items}
+          items={order.items.map((item) => ({
+            product: { id: "", name: item.product.name, price: 0 },
+            quantity: item.quantity,
+          }))}
         />
       </StoreLayout>
     );

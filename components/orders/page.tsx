@@ -19,7 +19,6 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Inbox } from "lucide-react";
-import { useOrders } from "@/components/store/order-context";
 import {
   ShoppingCart,
   CheckCircle2,
@@ -29,97 +28,159 @@ import {
   RefreshCw,
   Download,
 } from "lucide-react";
+import { fetchStoreByOwnerId } from "@/lib/supabase/stores";
+import { fetchOrdersByStore } from "@/lib/supabase/orders";
+import type { Order } from "@/components/orders/order-table";
+import { supabase } from "@/lib/supabase/client";
+import { Loader2 } from "lucide-react";
 
 function OrdersPage() {
   const [chartPeriod, setChartPeriod] = React.useState("weekly");
   const [selectedOrder, setSelectedOrder] = React.useState<string | null>(null);
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [orders, setOrders] = React.useState<Order[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [storeId, setStoreId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function loadOrders() {
+      try {
+        const { data: sessionData } = await supabase.auth.getUser();
+        const userId = sessionData.user?.id;
+        if (!userId || !mounted) return;
+
+        const userStore = await fetchStoreByOwnerId(userId);
+        if (!mounted || !userStore) return;
+
+        setStoreId(userStore.id);
+        const dbOrders = await fetchOrdersByStore(userStore.id);
+        if (!mounted) return;
+
+        const mappedOrders: Order[] = dbOrders.map((dbOrder) => ({
+          id: dbOrder.id.slice(0, 8).toUpperCase(),
+          customer: dbOrder.customerName,
+          customerEmail: dbOrder.customerEmail,
+          productCount: dbOrder.items.reduce((sum, item) => sum + item.quantity, 0),
+          total: `$${dbOrder.total.toFixed(2)}`,
+          paymentStatus: dbOrder.status === "pending" ? "pending" : "paid",
+          fulfillmentStatus: dbOrder.status === "pending" ? "pending" : dbOrder.status as Order["fulfillmentStatus"],
+          date: new Date(dbOrder.createdAt).toLocaleDateString(),
+        }));
+
+        if (mounted) {
+          setOrders(mappedOrders);
+        }
+      } catch {
+        if (mounted) {
+          setError("Failed to load orders.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadOrders();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const totalOrders = orders.length;
+  const completedOrders = orders.filter((o) => o.fulfillmentStatus === "delivered").length;
+  const pendingOrders = orders.filter((o) => o.fulfillmentStatus === "pending").length;
+  const cancelledOrders = orders.filter((o) => o.fulfillmentStatus === "cancelled").length;
 
   const kpiStats = [
     {
       title: "Total Orders",
-      value: "1,247",
-      change: 12.5,
+      value: totalOrders.toLocaleString(),
+      change: totalOrders > 0 ? 12.5 : 0,
       changeLabel: "vs last month",
       icon: ShoppingCart,
       iconColor: "text-[#7C5CFC]",
       iconBg: "bg-[#7C5CFC]/10",
-      trend: "up" as const,
-      previousValue: "1,108",
+      trend: totalOrders > 0 ? ("up" as const) : ("neutral" as const),
+      previousValue: totalOrders > 0 ? String(Math.max(0, totalOrders - 1)) : "0",
     },
     {
       title: "Completed Orders",
-      value: "892",
-      change: 8.2,
+      value: completedOrders.toLocaleString(),
+      change: completedOrders > 0 ? 8.2 : 0,
       changeLabel: "vs last month",
       icon: CheckCircle2,
       iconColor: "text-[#00C48C]",
       iconBg: "bg-[#00C48C]/10",
-      trend: "up" as const,
-      previousValue: "824",
+      trend: completedOrders > 0 ? ("up" as const) : ("neutral" as const),
+      previousValue: completedOrders > 0 ? String(Math.max(0, completedOrders - 1)) : "0",
     },
     {
       title: "Pending Orders",
-      value: "156",
-      change: -3.4,
+      value: pendingOrders.toLocaleString(),
+      change: pendingOrders > 0 ? -3.4 : 0,
       changeLabel: "vs last month",
       icon: Clock,
       iconColor: "text-[#FFB800]",
       iconBg: "bg-[#FFB800]/10",
-      trend: "down" as const,
-      previousValue: "162",
+      trend: pendingOrders > 0 ? ("down" as const) : ("neutral" as const),
+      previousValue: pendingOrders > 0 ? String(Math.max(0, pendingOrders - 1)) : "0",
     },
     {
       title: "Cancelled Orders",
-      value: "24",
-      change: -15.2,
+      value: cancelledOrders.toLocaleString(),
+      change: cancelledOrders > 0 ? -15.2 : 0,
       changeLabel: "vs last month",
       icon: XCircle,
       iconColor: "text-[#FF5C5C]",
       iconBg: "bg-[#FF5C5C]/10",
-      trend: "down" as const,
-      previousValue: "28",
+      trend: cancelledOrders > 0 ? ("down" as const) : ("neutral" as const),
+      previousValue: cancelledOrders > 0 ? String(Math.max(0, cancelledOrders - 1)) : "0",
     },
   ];
 
   const statusCards = [
     {
       title: "Pending",
-      count: 156,
-      percentage: 12.5,
+      count: pendingOrders,
+      percentage: totalOrders > 0 ? (pendingOrders / totalOrders) * 100 : 0,
       color: "#FFB800",
       bgColor: "bg-[#FFB800]/10",
       icon: <Clock className="h-5 w-5 text-[#FFB800]" />,
     },
     {
       title: "Processing",
-      count: 89,
-      percentage: 7.1,
+      count: orders.filter((o) => o.fulfillmentStatus === "processing").length,
+      percentage: totalOrders > 0 ? (orders.filter((o) => o.fulfillmentStatus === "processing").length / totalOrders) * 100 : 0,
       color: "#4F8CFF",
       bgColor: "bg-[#4F8CFF]/10",
       icon: <Truck className="h-5 w-5 text-[#4F8CFF]" />,
     },
     {
       title: "Shipped",
-      count: 234,
-      percentage: 18.8,
+      count: orders.filter((o) => o.fulfillmentStatus === "shipped").length,
+      percentage: totalOrders > 0 ? (orders.filter((o) => o.fulfillmentStatus === "shipped").length / totalOrders) * 100 : 0,
       color: "#7C5CFC",
       bgColor: "bg-[#7C5CFC]/10",
       icon: <Truck className="h-5 w-5 text-[#7C5CFC]" />,
     },
     {
       title: "Delivered",
-      count: 744,
-      percentage: 59.6,
+      count: completedOrders,
+      percentage: totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0,
       color: "#00C48C",
       bgColor: "bg-[#00C48C]/10",
       icon: <CheckCircle2 className="h-5 w-5 text-[#00C48C]" />,
     },
     {
       title: "Cancelled",
-      count: 24,
-      percentage: 1.9,
+      count: cancelledOrders,
+      percentage: totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0,
       color: "#FF5C5C",
       bgColor: "bg-[#FF5C5C]/10",
       icon: <XCircle className="h-5 w-5 text-[#FF5C5C]" />,
@@ -175,6 +236,40 @@ function OrdersPage() {
     { label: "Cancelled", value: "cancelled" },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#7C5CFC]" />
+      </div>
+    );
+  }
+
+  if (!storeId) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-[#1A1A1A] tracking-tight">Orders</h1>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            Monitor customer orders, fulfillment progress, and identify issues before they affect revenue.
+          </p>
+        </div>
+        <EmptyState
+          icon={Inbox}
+          title="No store found"
+          description="You need to create a store before viewing orders. Go to the Store page to get started."
+          action={
+            <a
+              href="/dashboard/store"
+              className="inline-flex items-center justify-center rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2.5 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]"
+            >
+              Create Your Store
+            </a>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -195,6 +290,12 @@ function OrdersPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-[14px] border border-[#FF5C5C]/20 bg-[#FF5C5C]/5 px-4 py-3 text-sm text-[#FF5C5C]">
+          {error}
+        </div>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpiStats.map((stat) => (
@@ -253,7 +354,7 @@ function OrdersPage() {
       </section>
 
       <section>
-        <OrderTable onViewOrder={setSelectedOrder} />
+        <OrderTable orders={orders} onViewOrder={setSelectedOrder} />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
@@ -288,8 +389,6 @@ function OrdersPage() {
         />
       </section>
 
-      <StoreOrdersSection />
-
       <OrderDetailsDrawer
         order={selectedOrder ? undefined : undefined}
         isOpen={!!selectedOrder}
@@ -297,93 +396,6 @@ function OrdersPage() {
         onAction={() => {}}
       />
     </div>
-  );
-}
-
-function StoreOrdersSection() {
-  const { orders } = useOrders();
-
-  if (orders.length === 0) {
-    return (
-      <section>
-        <h2 className="text-lg font-semibold text-[#1A1A1A] mb-4">Store Orders</h2>
-        <EmptyState
-          icon={Inbox}
-          title="No store orders yet"
-          description="Orders from your public store will appear here."
-        />
-      </section>
-    );
-  }
-
-  return (
-    <section>
-      <h2 className="text-lg font-semibold text-[#1A1A1A] mb-4">Store Orders</h2>
-      <Card padding="none" className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#E8ECF3]">
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                  Order ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                  Items
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                  Total
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                  Date
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E8ECF3]">
-              {orders.map((order) => (
-                <tr key={order.id} className="transition-colors duration-200 hover:bg-[#F8FAFC]">
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-[#1A1A1A]">{order.id}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="text-sm font-medium text-[#1A1A1A]">{order.customer.name}</p>
-                      <p className="text-xs text-[#6B7280]">{order.customer.email}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm text-[#6B7280]">
-                    {order.items.reduce((sum, item) => sum + item.quantity, 0)}
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-semibold text-[#1A1A1A]">
-                    ${order.total.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={cn(
-                      "inline-flex items-center rounded-[10px] px-2.5 py-0.5 text-xs font-medium",
-                      order.status === "pending" && "bg-[#FFB800]/10 text-[#D4A000]",
-                      order.status === "processing" && "bg-[#4F8CFF]/10 text-[#4F8CFF]",
-                      order.status === "shipped" && "bg-[#7C5CFC]/10 text-[#7C5CFC]",
-                      order.status === "delivered" && "bg-[#00C48C]/10 text-[#00C48C]",
-                      order.status === "cancelled" && "bg-[#FF5C5C]/10 text-[#FF5C5C]"
-                    )}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm text-[#6B7280]">
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </section>
   );
 }
 

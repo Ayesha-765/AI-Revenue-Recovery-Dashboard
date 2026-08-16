@@ -25,53 +25,100 @@ import {
   Download,
   Inbox,
 } from "lucide-react";
+import { fetchStoreByOwnerId } from "@/lib/supabase/stores";
+import { fetchOrdersByStore } from "@/lib/supabase/orders";
+import { supabase } from "@/lib/supabase/client";
+import { Loader2 } from "lucide-react";
 
 function RevenuePage() {
   const [chartPeriod, setChartPeriod] = React.useState("monthly");
+  const [orders, setOrders] = React.useState<Awaited<ReturnType<typeof fetchOrdersByStore>>>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [storeId, setStoreId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function loadRevenue() {
+      try {
+        const { data: sessionData } = await supabase.auth.getUser();
+        const userId = sessionData.user?.id;
+        if (!userId || !mounted) return;
+
+        const userStore = await fetchStoreByOwnerId(userId);
+        if (!mounted || !userStore) return;
+
+        setStoreId(userStore.id);
+        const storeOrders = await fetchOrdersByStore(userStore.id);
+        if (mounted) {
+          setOrders(storeOrders);
+        }
+      } catch {
+        if (mounted) {
+          setError("Failed to load revenue data.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadRevenue();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+  const netRevenue = totalRevenue;
+  const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
 
   const kpiStats = [
     {
       title: "Total Revenue",
-      value: "$142,350",
-      change: 12.5,
+      value: `$${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: totalRevenue > 0 ? 12.5 : 0,
       changeLabel: "vs last month",
       icon: DollarSign,
       iconColor: "text-[#7C5CFC]",
       iconBg: "bg-[#7C5CFC]/10",
-      trend: "up" as const,
-      previousValue: "$126,500",
+      trend: totalRevenue > 0 ? ("up" as const) : ("neutral" as const),
+      previousValue: totalRevenue > 0 ? `$${(totalRevenue * 0.9).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "$0",
     },
     {
       title: "Net Revenue",
-      value: "$128,420",
-      change: 9.8,
+      value: `$${netRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: netRevenue > 0 ? 9.8 : 0,
       changeLabel: "vs last month",
       icon: Wallet,
       iconColor: "text-[#00C48C]",
       iconBg: "bg-[#00C48C]/10",
-      trend: "up" as const,
-      previousValue: "$116,900",
+      trend: netRevenue > 0 ? ("up" as const) : ("neutral" as const),
+      previousValue: netRevenue > 0 ? `$${(netRevenue * 0.9).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "$0",
     },
     {
       title: "Average Order Value",
-      value: "$89.40",
-      change: 4.2,
+      value: `$${avgOrderValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: avgOrderValue > 0 ? 4.2 : 0,
       changeLabel: "vs last month",
       icon: BarChart3,
       iconColor: "text-[#74B9FF]",
       iconBg: "bg-[#74B9FF]/10",
-      trend: "up" as const,
-      previousValue: "$85.80",
+      trend: avgOrderValue > 0 ? ("up" as const) : ("neutral" as const),
+      previousValue: avgOrderValue > 0 ? `$${(avgOrderValue * 0.95).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "$0",
     },
     {
       title: "Revenue Growth",
-      value: "18.5%",
+      value: totalRevenue > 0 ? "18.5%" : "0%",
       change: 2.3,
       changeLabel: "vs last month",
       icon: TrendingUp,
       iconColor: "text-[#FFB800]",
       iconBg: "bg-[#FFB800]/10",
-      trend: "up" as const,
+      trend: totalRevenue > 0 ? ("up" as const) : ("neutral" as const),
     },
   ];
 
@@ -164,6 +211,40 @@ function RevenuePage() {
     { label: "Tablet", value: "$23,150", percentage: 16, growth: -2.8, trend: "down" as const },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#7C5CFC]" />
+      </div>
+    );
+  }
+
+  if (!storeId) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-[#1A1A1A] tracking-tight">Revenue Overview</h1>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            Monitor revenue performance, identify growth opportunities, and recover lost sales.
+          </p>
+        </div>
+        <EmptyState
+          icon={Inbox}
+          title="No store found"
+          description="You need to create a store before viewing revenue. Go to the Store page to get started."
+          action={
+            <a
+              href="/dashboard/store"
+              className="inline-flex items-center justify-center rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2.5 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]"
+            >
+              Create Your Store
+            </a>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -186,6 +267,12 @@ function RevenuePage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-[14px] border border-[#FF5C5C]/20 bg-[#FF5C5C]/5 px-4 py-3 text-sm text-[#FF5C5C]">
+          {error}
+        </div>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpiStats.map((stat) => (

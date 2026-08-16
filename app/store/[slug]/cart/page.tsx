@@ -5,19 +5,42 @@ import { StoreLayout } from "@/components/store/store-layout";
 import { useCart } from "@/components/store/cart-context";
 import { Button } from "@/components/ui/button";
 import { CartItem } from "@/components/store/cart-item";
-import { mockStores } from "@/data/stores";
+import { fetchStoreBySlug } from "@/lib/supabase/stores";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-
-function getStore(slug: string) {
-  return mockStores.find((store) => store.slug === slug) ?? null;
-}
 
 function CartPage() {
   const { items, subtotal, clearCart } = useCart();
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
-  const store = getStore(slug);
+  const [store, setStore] = React.useState<Awaited<ReturnType<typeof fetchStoreBySlug>> | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function loadStore() {
+      const storeData = await fetchStoreBySlug(slug);
+      if (mounted) {
+        setStore(storeData);
+        setIsLoading(false);
+      }
+    }
+
+    loadStore();
+
+    return () => {
+      mounted = false;
+    };
+  }, [slug]);
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <p className="text-[#6B7280]">Loading...</p>
+      </div>
+    );
+  }
 
   if (!store) {
     return (
