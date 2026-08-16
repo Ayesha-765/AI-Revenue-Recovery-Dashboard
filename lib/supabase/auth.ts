@@ -105,3 +105,65 @@ export async function signInWithEmail(email: string, password: string): Promise<
     };
   }
 }
+
+/**
+ * Fetches the user's profile from the profiles table using their auth user ID.
+ * Returns the profile data or null if not found.
+ */
+export async function fetchUserProfile(authId: string): Promise<{ full_name: string; business_name: string; email: string } | null> {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("full_name, business_name, email")
+      .eq("auth_id", authId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return {
+      full_name: data.full_name,
+      business_name: data.business_name,
+      email: data.email,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Updates the user's profile in the profiles table.
+ * Returns success/error result for UI consumption.
+ */
+export async function updateUserProfile(
+  authId: string,
+  data: { full_name?: string; business_name?: string; email?: string }
+): Promise<AuthResult> {
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update(data)
+      .eq("auth_id", authId);
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to update profile. Please try again.",
+      };
+    }
+
+    return {
+      success: true,
+      user: {
+        email: data.email || "",
+        name: data.full_name,
+      },
+    };
+  } catch {
+    return {
+      success: false,
+      error: "Something went wrong. Please try again.",
+    };
+  }
+}

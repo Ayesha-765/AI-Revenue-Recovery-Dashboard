@@ -19,6 +19,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Inbox } from "lucide-react";
+import { useOrders } from "@/components/store/order-context";
 import {
   ShoppingCart,
   CheckCircle2,
@@ -287,6 +288,8 @@ function OrdersPage() {
         />
       </section>
 
+      <StoreOrdersSection />
+
       <OrderDetailsDrawer
         order={selectedOrder ? undefined : undefined}
         isOpen={!!selectedOrder}
@@ -294,6 +297,93 @@ function OrdersPage() {
         onAction={() => {}}
       />
     </div>
+  );
+}
+
+function StoreOrdersSection() {
+  const { orders } = useOrders();
+
+  if (orders.length === 0) {
+    return (
+      <section>
+        <h2 className="text-lg font-semibold text-[#1A1A1A] mb-4">Store Orders</h2>
+        <EmptyState
+          icon={Inbox}
+          title="No store orders yet"
+          description="Orders from your public store will appear here."
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <h2 className="text-lg font-semibold text-[#1A1A1A] mb-4">Store Orders</h2>
+      <Card padding="none" className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[#E8ECF3]">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                  Order ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                  Customer
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                  Items
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                  Total
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                  Date
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E8ECF3]">
+              {orders.map((order) => (
+                <tr key={order.id} className="transition-colors duration-200 hover:bg-[#F8FAFC]">
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-medium text-[#1A1A1A]">{order.id}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="text-sm font-medium text-[#1A1A1A]">{order.customer.name}</p>
+                      <p className="text-xs text-[#6B7280]">{order.customer.email}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm text-[#6B7280]">
+                    {order.items.reduce((sum, item) => sum + item.quantity, 0)}
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-semibold text-[#1A1A1A]">
+                    ${order.total.toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={cn(
+                      "inline-flex items-center rounded-[10px] px-2.5 py-0.5 text-xs font-medium",
+                      order.status === "pending" && "bg-[#FFB800]/10 text-[#D4A000]",
+                      order.status === "processing" && "bg-[#4F8CFF]/10 text-[#4F8CFF]",
+                      order.status === "shipped" && "bg-[#7C5CFC]/10 text-[#7C5CFC]",
+                      order.status === "delivered" && "bg-[#00C48C]/10 text-[#00C48C]",
+                      order.status === "cancelled" && "bg-[#FF5C5C]/10 text-[#FF5C5C]"
+                    )}>
+                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm text-[#6B7280]">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </section>
   );
 }
 

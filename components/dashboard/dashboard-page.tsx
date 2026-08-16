@@ -60,7 +60,7 @@ function DashboardPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <WelcomeHeader userName="Alex" />
+        <WelcomeHeader />
         <div className="flex items-center gap-2">
           <button className="rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]">
             Export Report

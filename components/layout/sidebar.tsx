@@ -10,7 +10,7 @@ import {
   Sparkles, 
   FileText, 
   Settings,
-  ChevronLeft
+  Store
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -20,6 +20,7 @@ const navigation = [
   { name: "Revenue", href: "/dashboard/revenue", icon: DollarSign },
   { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart },
   { name: "Products", href: "/dashboard/products", icon: Package },
+  { name: "Store", href: "/dashboard/store", icon: Store },
   { name: "Customers", href: "/dashboard/customers", icon: Users },
   { name: "Revenue Problems", href: "/dashboard/problems", icon: AlertTriangle },
   { name: "AI Insights", href: "/dashboard/insights", icon: Sparkles },
@@ -70,7 +71,7 @@ function Sidebar({
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-2">
+      <nav className="flex-1 space-y-1 px-3 py-2 overflow-y-auto">
         {navigation.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -124,23 +125,12 @@ function Sidebar({
     <>
       <aside
         className={cn(
-          "hidden lg:flex h-screen w-64 shrink-0 flex-col border-r border-[#E8ECF3] bg-white transition-all duration-300",
+          "hidden lg:flex w-64 shrink-0 flex-col border-r border-[#E8ECF3] bg-white transition-all duration-300 relative overflow-hidden",
           isCollapsed && "w-20",
           className
         )}
       >
         {sidebarContent}
-        <button
-          onClick={onToggle}
-          className="absolute -right-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-[#E8ECF3] bg-white shadow-sm lg:flex hover:bg-[#F8FAFC]"
-        >
-          <ChevronLeft
-            className={cn(
-              "h-3 w-3 text-[#6B7280] transition-transform duration-200",
-              isCollapsed && "rotate-180"
-            )}
-          />
-        </button>
       </aside>
 
       <div

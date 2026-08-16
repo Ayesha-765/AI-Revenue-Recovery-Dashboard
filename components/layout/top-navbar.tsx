@@ -2,6 +2,7 @@ import * as React from "react";
 import { Search, Bell, ChevronDown, Menu } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface TopNavbarProps {
   onMenuClick?: () => void;
@@ -9,6 +10,15 @@ interface TopNavbarProps {
 
 function TopNavbar({ onMenuClick }: TopNavbarProps) {
   const [notifications] = React.useState(3);
+  const { user } = useAuth();
+
+  const displayName = user?.name || user?.email?.split("@")[0] || "User";
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="flex h-16 items-center justify-between border-b border-[#E8ECF3] bg-white/80 px-6 backdrop-blur-md">
@@ -49,13 +59,13 @@ function TopNavbar({ onMenuClick }: TopNavbarProps) {
 
         <div className="flex items-center gap-3 pl-3 border-l border-[#E8ECF3]">
           <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium text-[#1A1A1A]">Alex Morgan</p>
+            <p className="text-sm font-medium text-[#1A1A1A]">{displayName}</p>
             <p className="text-xs text-[#6B7280]">Store Owner</p>
           </div>
           <Avatar
             src=""
-            alt="Alex Morgan"
-            fallback="AM"
+            alt={displayName}
+            fallback={initials}
             size="default"
             className="border-2 border-white shadow-sm"
           />

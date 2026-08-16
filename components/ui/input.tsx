@@ -3,10 +3,11 @@ import { cn } from "@/lib/utils";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode;
+  error?: string;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, icon, ...props }, ref) => {
+  ({ className, type, icon, error, ...props }, ref) => {
     return (
       <div className="relative">
         {icon && (
@@ -17,8 +18,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <input
           type={type}
           className={cn(
-            "flex h-11 w-full rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2.5 text-sm text-[#1A1A1A] placeholder:text-[#6B7280] transition-all duration-200",
-            "hover:border-[#7C5CFC]/40 focus:border-[#7C5CFC] focus:outline-none focus:ring-2 focus:ring-[#7C5CFC]/20",
+            "flex h-11 w-full rounded-[14px] border bg-white px-4 py-2.5 text-sm text-[#1A1A1A] placeholder:text-[#6B7280] transition-all duration-200",
+            error
+              ? "border-[#FF5C5C] focus:border-[#FF5C5C] focus:ring-[#FF5C5C]/20"
+              : "border-[#E8ECF3] hover:border-[#7C5CFC]/40 focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20",
             icon && "pl-10",
             className
           )}
