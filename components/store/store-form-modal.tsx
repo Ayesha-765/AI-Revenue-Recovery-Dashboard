@@ -13,6 +13,7 @@ interface StoreFormData {
   slug: string;
   heroTitle: string;
   heroDescription: string;
+  published: boolean;
 }
 
 interface StoreFormModalProps {
@@ -30,6 +31,7 @@ const emptyFormData: StoreFormData = {
   slug: "",
   heroTitle: "",
   heroDescription: "",
+  published: false,
 };
 
 function StoreFormModal({
@@ -48,6 +50,7 @@ function StoreFormModal({
         slug: store.slug,
         heroTitle: store.heroTitle,
         heroDescription: store.heroDescription,
+        published: store.published,
       };
     }
     return emptyFormData;
@@ -161,6 +164,30 @@ function StoreFormModal({
             rows={2}
             className="w-full rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2.5 text-sm text-[#1A1A1A] placeholder:text-[#6B7280] transition-all duration-200 hover:border-[#7C5CFC]/40 focus:border-[#7C5CFC] focus:outline-none focus:ring-2 focus:ring-[#7C5CFC]/20 resize-none"
           />
+        </div>
+
+        <div className="flex items-center justify-between rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-[#1A1A1A]">Publish Store</p>
+            <p className="text-xs text-[#6B7280]">
+              {formData.published
+                ? "Your store is visible to the public."
+                : "Your store is private and only visible to you."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, published: !prev.published }))}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              formData.published ? "bg-[#00C48C]" : "bg-[#E8ECF3]"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                formData.published ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-2">

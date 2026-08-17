@@ -1,8 +1,9 @@
 import * as React from "react";
-import { Search, Bell, ChevronDown, Menu, LogOut } from "lucide-react";
+import { Search, Bell, ChevronDown, Menu, LogOut, User } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth/auth-provider";
+import Link from "next/link";
 
 interface TopNavbarProps {
   onMenuClick?: () => void;
@@ -89,6 +90,14 @@ function TopNavbar({ onMenuClick }: TopNavbarProps) {
                 onClick={() => setIsUserMenuOpen(false)}
               />
               <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-[14px] border border-[#E8ECF3] bg-white py-1 shadow-lg">
+                <Link
+                  href="/dashboard/profile"
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#1A1A1A] hover:bg-[#F8FAFC] transition-colors"
+                  onClick={() => setIsUserMenuOpen(false)}
+                >
+                  <User className="h-4 w-4" />
+                  Profile
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#FF5C5C] hover:bg-[#FF5C5C]/5 transition-colors"

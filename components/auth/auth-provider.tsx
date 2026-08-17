@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserProfile = React.useCallback(async (userId: string, email: string) => {
     const profile = await fetchUserProfile(userId);
+    console.log("AuthProvider loadUserProfile", { userId, email, profile });
     if (profile) {
       setUser({
         email: profile.email || email,

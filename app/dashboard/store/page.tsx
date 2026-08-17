@@ -43,7 +43,7 @@ function DashboardStorePage() {
     };
   }, []);
 
-  const handleCreateStore = async (data: { name: string; slug: string; description: string; logo: string; heroTitle: string; heroDescription: string }) => {
+  const handleCreateStore = async (data: { name: string; slug: string; description: string; logo: string; heroTitle: string; heroDescription: string; published: boolean }) => {
     setError(null);
 
     const { data: sessionData } = await supabase.auth.getUser();
@@ -61,6 +61,7 @@ function DashboardStorePage() {
       logo: data.logo || undefined,
       hero_title: data.heroTitle || undefined,
       hero_description: data.heroDescription || undefined,
+      published: data.published,
     });
 
     if (result.success && result.store) {
@@ -71,7 +72,7 @@ function DashboardStorePage() {
     }
   };
 
-  const handleUpdateStore = async (data: { name: string; slug: string; description: string; logo: string; heroTitle: string; heroDescription: string }) => {
+  const handleUpdateStore = async (data: { name: string; slug: string; description: string; logo: string; heroTitle: string; heroDescription: string; published: boolean }) => {
     if (!store) return;
     setError(null);
 
@@ -82,6 +83,7 @@ function DashboardStorePage() {
       logo: data.logo,
       heroTitle: data.heroTitle,
       heroDescription: data.heroDescription,
+      published: data.published,
     });
 
     if (result.success) {
@@ -95,6 +97,7 @@ function DashboardStorePage() {
               logo: data.logo,
               heroTitle: data.heroTitle,
               heroDescription: data.heroDescription,
+              published: data.published,
             }
           : prev
       );
@@ -154,15 +157,25 @@ function DashboardStorePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href={`/store/${store.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={async () => {
+              if (!store.published) {
+                const result = await updateStore(store.id, { published: true });
+                if (result.success) {
+                  setStore((prev) => prev ? { ...prev, published: true } : prev);
+                  window.open(`/store/${store.slug}`, "_blank", "noopener,noreferrer");
+                } else {
+                  setError(result.error || "Failed to publish store.");
+                }
+              } else {
+                window.open(`/store/${store.slug}`, "_blank", "noopener,noreferrer");
+              }
+            }}
             className="inline-flex items-center justify-center rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2.5 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]"
           >
             <ExternalLink className="h-4 w-4 mr-2" />
-            View Store
-          </a>
+            {store.published ? "View Store" : "Publish & View Store"}
+          </button>
           <Button size="sm" onClick={() => setIsFormOpen(true)}>
             Edit Store
           </Button>

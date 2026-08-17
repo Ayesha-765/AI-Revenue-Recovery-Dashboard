@@ -69,12 +69,26 @@ export async function fetchStoreBySlug(slug: string): Promise<Store | null> {
       .eq("published", true)
       .single();
 
-    if (error || !data) {
+    if (error) {
+      console.error("fetchStoreBySlug error", {
+        slug,
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        raw: error,
+      });
+      return null;
+    }
+
+    if (!data) {
+      console.warn("fetchStoreBySlug no data", { slug });
       return null;
     }
 
     return mapDbStoreToStore(data as DbStore);
-  } catch {
+  } catch (error) {
+    console.error("fetchStoreBySlug exception", { slug, error });
     return null;
   }
 }
@@ -105,6 +119,7 @@ export async function createStore(data: {
   logo?: string;
   hero_title?: string;
   hero_description?: string;
+  published?: boolean;
 }): Promise<{ success: boolean; error?: string; store?: Store }> {
   try {
     const { data: store, error } = await supabase
@@ -117,6 +132,7 @@ export async function createStore(data: {
         logo: data.logo || null,
         hero_title: data.hero_title || null,
         hero_description: data.hero_description || null,
+        published: data.published ?? false,
       })
       .select()
       .single();

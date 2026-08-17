@@ -55,33 +55,49 @@ create table if not exists public.order_items (
   subtotal numeric not null
 );
 
--- Indexes for common queries
+-- Indexes for performance
 create index if not exists idx_stores_owner_id on public.stores(owner_id);
 create index if not exists idx_stores_slug on public.stores(slug);
 create index if not exists idx_products_store_id on public.products(store_id);
 create index if not exists idx_orders_store_id on public.orders(store_id);
 create index if not exists idx_order_items_order_id on public.order_items(order_id);
 
--- Enable Row Level Security
+-- Enable Row Level Security on all new tables
 alter table public.stores enable row level security;
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
+
+-- Drop existing policies if they exist to make migration rerunnable
+drop policy if exists "Store owners can view their own stores" on public.stores;
+drop policy if exists "Store owners can insert their own store" on public.stores;
+drop policy if exists "Store owners can update their own store" on public.stores;
+drop policy if exists "Store owners can delete their own store" on public.stores;
+drop policy if exists "Public can view published stores" on public.stores;
+drop policy if exists "Store owners can view their store products" on public.products;
+drop policy if exists "Store owners can insert products to their store" on public.products;
+drop policy if exists "Store owners can update their store products" on public.products;
+drop policy if exists "Store owners can delete their store products" on public.products;
+drop policy if exists "Public can view active products" on public.products;
+drop policy if exists "Store owners can view their store orders" on public.orders;
+drop policy if exists "Public can insert orders for checkout" on public.orders;
+drop policy if exists "Store owners can view their store order items" on public.order_items;
+drop policy if exists "Public can insert order items during checkout" on public.order_items;
 
 -- STORES RLS
 create policy "Store owners can view their own stores"
   on public.stores for select
   using (auth.uid() = owner_id);
 
-create policy "Store owners can insert their own stores"
+create policy "Store owners can insert their own store"
   on public.stores for insert
   with check (auth.uid() = owner_id);
 
-create policy "Store owners can update their own stores"
+create policy "Store owners can update their own store"
   on public.stores for update
   using (auth.uid() = owner_id);
 
-create policy "Store owners can delete their own stores"
+create policy "Store owners can delete their own store"
   on public.stores for delete
   using (auth.uid() = owner_id);
 
@@ -152,7 +168,7 @@ create policy "Store owners can view their store orders"
     )
   );
 
-create policy "Public can insert orders for any published store"
+create policy "Public can insert orders for published stores"
   on public.orders for insert
   with check (
     exists (

@@ -118,6 +118,8 @@ export async function fetchUserProfile(authId: string): Promise<{ full_name: str
       .eq("auth_id", authId)
       .single();
 
+    console.log("fetchUserProfile debug", { authId, data, error });
+
     if (error || !data) {
       return null;
     }
@@ -127,7 +129,8 @@ export async function fetchUserProfile(authId: string): Promise<{ full_name: str
       business_name: data.business_name,
       email: data.email,
     };
-  } catch {
+  } catch (error) {
+    console.error("fetchUserProfile exception", { authId, error });
     return null;
   }
 }
@@ -158,6 +161,75 @@ export async function updateUserProfile(
       user: {
         email: data.email || "",
         name: data.full_name,
+      },
+    };
+  } catch {
+    return {
+      success: false,
+      error: "Something went wrong. Please try again.",
+    };
+  }
+}
+
+/**
+ * Updates the user's password in Supabase Auth.
+ * Returns success/error result for UI consumption.
+ */
+export async function updateUserPassword(
+  password: string
+): Promise<AuthResult> {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password,
+    });
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to update password. Please try again.",
+      };
+    }
+
+    return {
+      success: true,
+      user: {
+        email: "",
+        name: "",
+      },
+    };
+  } catch {
+    return {
+      success: false,
+      error: "Something went wrong. Please try again.",
+    };
+  }
+}
+
+/**
+ * Deletes the user's profile and auth account.
+ * Returns success/error result for UI consumption.
+ */
+export async function deleteUserAccount(authId: string): Promise<AuthResult> {
+  try {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("auth_id", authId);
+
+    if (profileError) {
+      return {
+        success: false,
+        error: profileError.message || "Failed to delete profile. Please try again.",
+      };
+    }
+
+    await supabase.auth.signOut();
+
+    return {
+      success: true,
+      user: {
+        email: "",
+        name: "",
       },
     };
   } catch {
