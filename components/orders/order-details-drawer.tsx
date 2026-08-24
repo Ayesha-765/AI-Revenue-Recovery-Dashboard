@@ -25,38 +25,14 @@ interface OrderDetailsDrawerProps {
   className?: string;
 }
 
-const defaultOrder: OrderDetailItem = {
-  id: "ORD-2847",
-  customer: "Sarah Johnson",
-  email: "sarah@example.com",
-  phone: "+1 (555) 123-4567",
-  products: [
-    { name: "Premium Wireless Headphones", quantity: 1, price: "$129.00" },
-    { name: "USB-C Charging Cable", quantity: 2, price: "$24.00" },
-    { name: "Headphone Case", quantity: 1, price: "$19.00" },
-  ],
-  shippingAddress: "123 Main Street, Apt 4B\nNew York, NY 10001\nUnited States",
-  paymentMethod: "Visa ending in 4242",
-  paymentStatus: "Paid",
-  fulfillmentStatus: "Delivered",
-  timeline: [
-    { status: "Order Placed", date: "Aug 7, 2026 - 10:30 AM", note: "Order received" },
-    { status: "Payment Confirmed", date: "Aug 7, 2026 - 10:32 AM", note: "Payment processed successfully" },
-    { status: "Processing", date: "Aug 7, 2026 - 2:00 PM", note: "Order is being prepared" },
-    { status: "Shipped", date: "Aug 8, 2026 - 9:15 AM", note: "Shipped via Express Delivery" },
-    { status: "Delivered", date: "Aug 9, 2026 - 11:45 AM", note: "Package delivered" },
-  ],
-  notes: "Customer requested gift wrapping. Handle with care.",
-};
-
 function OrderDetailsDrawer({
-  order = defaultOrder,
+  order,
   isOpen,
   onClose,
   onAction,
   className,
 }: OrderDetailsDrawerProps) {
-  if (!isOpen) return null;
+  if (!isOpen || !order) return null;
 
   return (
     <div className="fixed inset-0 z-50">

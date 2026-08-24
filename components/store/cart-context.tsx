@@ -15,8 +15,34 @@ interface CartContextValue {
 
 const CartContext = React.createContext<CartContextValue | undefined>(undefined);
 
+const CART_STORAGE_KEY = "cart-items";
+
+function loadCartFromStorage(): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as CartItem[];
+  } catch {
+    return [];
+  }
+}
+
+function saveCartToStorage(items: CartItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // ignore storage errors
+  }
+}
+
 function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = React.useState<CartItem[]>([]);
+  const [items, setItems] = React.useState<CartItem[]>(() => loadCartFromStorage());
+
+  React.useEffect(() => {
+    saveCartToStorage(items);
+  }, [items]);
 
   const addItem = (product: Product, quantity = 1) => {
     setItems((prev) => {

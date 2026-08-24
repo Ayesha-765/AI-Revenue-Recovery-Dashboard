@@ -3,6 +3,7 @@ import { supabase } from "./client";
 export interface DbOrder {
   id: string;
   store_id: string;
+  customer_id: string | null;
   customer_name: string;
   customer_email: string;
   customer_phone: string | null;
@@ -13,12 +14,14 @@ export interface DbOrder {
   shipping: number;
   total: number;
   status: string;
+  payment_status: string;
   created_at: string;
 }
 
 export interface Order {
   id: string;
   storeId: string;
+  customerId: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -29,6 +32,7 @@ export interface Order {
   shipping: number;
   total: number;
   status: string;
+  paymentStatus: string;
   createdAt: string;
   items: OrderItem[];
 }
@@ -55,6 +59,7 @@ export interface OrderItem {
 
 export interface OrderInsert {
   store_id: string;
+  customer_id?: string;
   customer_name: string;
   customer_email: string;
   customer_phone?: string;
@@ -65,6 +70,7 @@ export interface OrderInsert {
   shipping: number;
   total: number;
   status?: string;
+  payment_status?: string;
 }
 
 export interface OrderItemInsert {
@@ -80,6 +86,7 @@ function mapDbOrderToOrder(db: DbOrder, items: OrderItem[]): Order {
   return {
     id: db.id,
     storeId: db.store_id,
+    customerId: db.customer_id,
     customerName: db.customer_name,
     customerEmail: db.customer_email,
     customerPhone: db.customer_phone || "",
@@ -90,6 +97,7 @@ function mapDbOrderToOrder(db: DbOrder, items: OrderItem[]): Order {
     shipping: db.shipping,
     total: db.total,
     status: db.status,
+    paymentStatus: db.payment_status,
     createdAt: db.created_at,
     items,
   };
@@ -151,6 +159,7 @@ export async function createOrder(data: OrderInsert): Promise<{ success: boolean
       .from("orders")
       .insert({
         store_id: data.store_id,
+        customer_id: data.customer_id || null,
         customer_name: data.customer_name,
         customer_email: data.customer_email,
         customer_phone: data.customer_phone || null,
@@ -161,6 +170,7 @@ export async function createOrder(data: OrderInsert): Promise<{ success: boolean
         shipping: data.shipping,
         total: data.total,
         status: data.status || "pending",
+        payment_status: data.payment_status || "pending",
       })
       .select()
       .single();

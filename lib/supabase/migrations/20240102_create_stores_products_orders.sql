@@ -10,7 +10,8 @@ create table if not exists public.stores (
   hero_description text,
   published boolean not null default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  constraint stores_owner_id_unique unique (owner_id)
 );
 
 -- Create products table
@@ -41,6 +42,7 @@ create table if not exists public.orders (
   shipping numeric not null default 0,
   total numeric not null,
   status text not null default 'pending',
+  payment_status text not null default 'pending',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -146,16 +148,6 @@ create policy "Store owners can delete their store products"
     )
   );
 
-create policy "Public can view active products of published stores"
-  on public.products for select
-  using (
-    active = true
-    and exists (
-      select 1 from public.stores
-      where stores.id = products.store_id
-        and stores.published = true
-    )
-  );
 
 -- ORDERS RLS
 create policy "Store owners can view their store orders"
@@ -187,16 +179,5 @@ create policy "Store owners can view their store order items"
       join public.stores on stores.id = orders.store_id
       where orders.id = order_items.order_id
         and stores.owner_id = auth.uid()
-    )
-  );
-
-create policy "Public can insert order items for published stores"
-  on public.order_items for insert
-  with check (
-    exists (
-      select 1 from public.orders
-      join public.stores on stores.id = orders.store_id
-      where orders.id = order_items.order_id
-        and stores.published = true
     )
   );

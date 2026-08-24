@@ -15,17 +15,17 @@ export default async function StorePage({ params }: StorePageProps) {
   let store = await fetchStoreBySlug(slug);
 
   if (!store) {
-    console.warn("Public published store not found, trying admin lookup for debugging", { slug: slug });
+    console.warn("Public published store not found, trying admin lookup for debugging", { slug });
     store = await fetchStoreBySlugAdmin(slug);
   }
 
   if (!store) {
-    console.error("Public store not found or not published", { slug: slug });
+    console.error("Public store not found or not published", { slug });
     notFound();
   }
 
   if (!store.published) {
-    console.warn("Public store found but not published", { slug: slug, storeId: store.id });
+    console.warn("Public store found but not published", { slug, storeId: store.id });
     notFound();
   }
 

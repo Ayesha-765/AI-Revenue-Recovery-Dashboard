@@ -3,15 +3,16 @@
 import * as React from "react";
 import { StoreLayout } from "@/components/store/store-layout";
 import { useCart } from "@/components/store/cart-context";
-import { CartProvider } from "@/components/store/cart-context";
 import { Button } from "@/components/ui/button";
 import { CartItem } from "@/components/store/cart-item";
-import { fetchStoreBySlug } from "@/lib/supabase/stores";
+import { fetchStoreBySlug, type Store } from "@/lib/supabase/stores";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-function CartPageInner({ store, slug }: { store: Awaited<ReturnType<typeof fetchStoreBySlug>>; slug: string }) {
+function CartPageInner({ store, slug }: { store: Store; slug: string }) {
   const { items, subtotal, clearCart } = useCart();
+  const shipping = 0;
+  const total = subtotal + shipping;
 
   if (items.length === 0) {
     return (
@@ -24,9 +25,6 @@ function CartPageInner({ store, slug }: { store: Awaited<ReturnType<typeof fetch
       </div>
     );
   }
-
-  const shipping = 0;
-  const total = subtotal + shipping;
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
@@ -87,7 +85,7 @@ function CartPageInner({ store, slug }: { store: Awaited<ReturnType<typeof fetch
 function CartPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
-  const [store, setStore] = React.useState<Awaited<ReturnType<typeof fetchStoreBySlug>> | null>(null);
+  const [store, setStore] = React.useState<Store | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -97,6 +95,8 @@ function CartPage() {
       const storeData = await fetchStoreBySlug(slug);
       if (mounted) {
         setStore(storeData);
+      }
+      if (mounted) {
         setIsLoading(false);
       }
     }
@@ -126,9 +126,7 @@ function CartPage() {
 
   return (
     <StoreLayout store={store}>
-      <CartProvider>
-        <CartPageInner store={store} slug={slug} />
-      </CartProvider>
+      <CartPageInner store={store} slug={slug} />
     </StoreLayout>
   );
 }

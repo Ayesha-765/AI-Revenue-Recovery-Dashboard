@@ -101,6 +101,9 @@ function StoreFormModal({
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <div className="rounded-[14px] border border-[#7C5CFC]/10 bg-[#7C5CFC]/5 px-4 py-3 text-sm text-[#7C5CFC]">
+          Each account can create only one store. You can update your store details anytime after creation.
+        </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-[#1A1A1A]">Store Name</label>
           <Input

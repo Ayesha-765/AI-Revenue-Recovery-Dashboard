@@ -4,21 +4,20 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProductTable, ProductFormModal, DeleteProductModal } from "@/components/products";
-import type { Product } from "@/data/products";
 import type { ProductFormData } from "@/components/products/product-form-modal";
 import { Plus, Store as StoreIcon, Loader2 } from "lucide-react";
 import { fetchStoreByOwnerId } from "@/lib/supabase/stores";
-import { fetchProductsByStore, createProduct, updateProduct, deleteProduct } from "@/lib/supabase/products";
+import { fetchProductsByStore, createProduct, updateProduct, deleteProduct, type DashboardProduct } from "@/lib/supabase/products";
 import { supabase } from "@/lib/supabase/client";
 
 function ProductsPage() {
-  const [products, setProducts] = React.useState<Product[]>([]);
+  const [products, setProducts] = React.useState<DashboardProduct[]>([]);
   const [storeId, setStoreId] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
-  const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
-  const [deletingProduct, setDeletingProduct] = React.useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = React.useState<DashboardProduct | null>(null);
+  const [deletingProduct, setDeletingProduct] = React.useState<DashboardProduct | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -72,12 +71,12 @@ function ProductsPage() {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = (product: DashboardProduct) => {
     setEditingProduct(product);
     setIsFormOpen(true);
   };
 
-  const handleDelete = (product: Product) => {
+  const handleDelete = (product: DashboardProduct) => {
     setDeletingProduct(product);
     setIsDeleteOpen(true);
   };

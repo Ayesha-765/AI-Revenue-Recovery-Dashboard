@@ -17,83 +17,14 @@ interface Order {
 }
 
 interface OrderTableProps {
-  orders?: Order[];
+  orders: Order[];
   onViewOrder?: (id: string) => void;
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
+  totalFiltered?: number;
   className?: string;
 }
-
-const defaultOrders: Order[] = [
-  {
-    id: "ORD-2847",
-    customer: "Sarah Johnson",
-    customerEmail: "sarah@example.com",
-    productCount: 3,
-    total: "$245.00",
-    paymentStatus: "paid",
-    fulfillmentStatus: "delivered",
-    date: "2026-08-07",
-  },
-  {
-    id: "ORD-2846",
-    customer: "Michael Chen",
-    customerEmail: "michael@example.com",
-    productCount: 1,
-    total: "$89.00",
-    paymentStatus: "pending",
-    fulfillmentStatus: "processing",
-    date: "2026-08-07",
-  },
-  {
-    id: "ORD-2845",
-    customer: "Emily Davis",
-    customerEmail: "emily@example.com",
-    productCount: 2,
-    total: "$156.50",
-    paymentStatus: "failed",
-    fulfillmentStatus: "pending",
-    date: "2026-08-06",
-  },
-  {
-    id: "ORD-2844",
-    customer: "James Wilson",
-    customerEmail: "james@example.com",
-    productCount: 4,
-    total: "$512.00",
-    paymentStatus: "paid",
-    fulfillmentStatus: "shipped",
-    date: "2026-08-06",
-  },
-  {
-    id: "ORD-2843",
-    customer: "Lisa Anderson",
-    customerEmail: "lisa@example.com",
-    productCount: 1,
-    total: "$67.00",
-    paymentStatus: "refunded",
-    fulfillmentStatus: "cancelled",
-    date: "2026-08-05",
-  },
-  {
-    id: "ORD-2842",
-    customer: "David Brown",
-    customerEmail: "david@example.com",
-    productCount: 2,
-    total: "$178.00",
-    paymentStatus: "paid",
-    fulfillmentStatus: "processing",
-    date: "2026-08-05",
-  },
-  {
-    id: "ORD-2841",
-    customer: "Jennifer Lee",
-    customerEmail: "jennifer@example.com",
-    productCount: 5,
-    total: "$890.00",
-    paymentStatus: "paid",
-    fulfillmentStatus: "pending",
-    date: "2026-08-04",
-  },
-];
 
 const paymentStatusConfig = {
   paid: { label: "Paid", variant: "success" as const },
@@ -110,7 +41,18 @@ const fulfillmentStatusConfig = {
   cancelled: { label: "Cancelled", variant: "danger" as const },
 };
 
-function OrderTable({ orders = defaultOrders, onViewOrder, className }: OrderTableProps) {
+function OrderTable({
+  orders,
+  onViewOrder,
+  currentPage = 1,
+  totalPages = 1,
+  onPageChange,
+  totalFiltered = 0,
+  className,
+}: OrderTableProps) {
+  const startIndex = totalFiltered > 0 ? (currentPage - 1) * orders.length + 1 : 0;
+  const endIndex = Math.min(currentPage * orders.length, totalFiltered);
+
   return (
     <Card padding="none" className={cn("overflow-hidden", className)}>
       <div className="p-6 pb-4">
@@ -151,93 +93,118 @@ function OrderTable({ orders = defaultOrders, onViewOrder, className }: OrderTab
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E8ECF3]">
-            {orders.map((order) => {
-              const paymentStatus = paymentStatusConfig[order.paymentStatus];
-              const fulfillmentStatus = fulfillmentStatusConfig[order.fulfillmentStatus];
-              const initials = order.customer
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase();
+            {orders.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-12 text-center">
+                  <p className="text-sm text-[#6B7280]">No orders found.</p>
+                </td>
+              </tr>
+            ) : (
+              orders.map((order) => {
+                const paymentStatus = paymentStatusConfig[order.paymentStatus];
+                const fulfillmentStatus = fulfillmentStatusConfig[order.fulfillmentStatus];
+                const initials = order.customer
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
 
-              return (
-                <tr
-                  key={order.id}
-                  className="group transition-colors duration-200 hover:bg-[#F8FAFC]"
-                >
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-[#1A1A1A]">{order.id}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar
-                        src=""
-                        alt={order.customer}
-                        fallback={initials}
-                        size="sm"
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-[#1A1A1A]">{order.customer}</p>
-                        <p className="text-xs text-[#6B7280]">{order.customerEmail}</p>
+                return (
+                  <tr
+                    key={order.id}
+                    className="group transition-colors duration-200 hover:bg-[#F8FAFC]"
+                  >
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-[#1A1A1A]">{order.id}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          src=""
+                          alt={order.customer}
+                          fallback={initials}
+                          size="sm"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-[#1A1A1A]">{order.customer}</p>
+                          <p className="text-xs text-[#6B7280]">{order.customerEmail}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm text-[#6B7280]">
-                    {order.productCount}
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-semibold text-[#1A1A1A]">
-                    {order.total}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge variant={paymentStatus.variant}>{paymentStatus.label}</Badge>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge variant={fulfillmentStatus.variant}>{fulfillmentStatus.label}</Badge>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm text-[#6B7280]">
-                    {order.date}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => onViewOrder?.(order.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-[10px] text-[#6B7280] opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-[#F1F5F9]"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button className="flex h-8 w-8 items-center justify-center rounded-[10px] text-[#6B7280] opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-[#F1F5F9]">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-[#6B7280]">
+                      {order.productCount}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-semibold text-[#1A1A1A]">
+                      {order.total}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge variant={paymentStatus.variant}>{paymentStatus.label}</Badge>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge variant={fulfillmentStatus.variant}>{fulfillmentStatus.label}</Badge>
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-[#6B7280]">
+                      {order.date}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => onViewOrder?.(order.id)}
+                          className="flex h-8 w-8 items-center justify-center rounded-[10px] text-[#6B7280] opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-[#F1F5F9]"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button className="flex h-8 w-8 items-center justify-center rounded-[10px] text-[#6B7280] opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-[#F1F5F9]">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="flex items-center justify-between border-t border-[#E8ECF3] px-6 py-4">
         <p className="text-sm text-[#6B7280]">
-          Showing <span className="font-medium text-[#1A1A1A]">1</span> to{" "}
-          <span className="font-medium text-[#1A1A1A]">{orders.length}</span> of{" "}
-          <span className="font-medium text-[#1A1A1A]">1,247</span> orders
+          Showing{" "}
+          <span className="font-medium text-[#1A1A1A]">
+            {totalFiltered > 0 ? startIndex : 0}
+          </span>{" "}
+          to{" "}
+          <span className="font-medium text-[#1A1A1A]">{endIndex}</span> of{" "}
+          <span className="font-medium text-[#1A1A1A]">{totalFiltered}</span> orders
         </p>
         <div className="flex items-center gap-2">
-          <button className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#E8ECF3] text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC] disabled:opacity-50">
+          <button
+            onClick={() => onPageChange?.(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="flex h-9 items-center gap-1 rounded-[10px] border border-[#E8ECF3] px-4 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC] disabled:opacity-50"
+          >
             Previous
           </button>
-          <button className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#7C5CFC] text-sm font-medium text-white">
-            1
-          </button>
-          <button className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#E8ECF3] text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]">
-            2
-          </button>
-          <button className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#E8ECF3] text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]">
-            3
-          </button>
-          <button className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#E8ECF3] text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => onPageChange?.(page)}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-[10px] text-sm font-medium transition-all duration-200",
+                currentPage === page
+                  ? "bg-[#7C5CFC] text-white shadow-sm"
+                  : "border border-[#E8ECF3] text-[#6B7280] hover:border-[#7C5CFC] hover:text-[#7C5CFC]"
+              )}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => onPageChange?.(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="flex h-9 items-center gap-1 rounded-[10px] border border-[#E8ECF3] px-4 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC] disabled:opacity-50"
+          >
             Next
           </button>
         </div>

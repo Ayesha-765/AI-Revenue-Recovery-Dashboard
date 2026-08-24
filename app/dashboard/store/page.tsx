@@ -126,9 +126,9 @@ function DashboardStorePage() {
         </div>
         <Card padding="default" className="text-center py-12">
           <StoreIcon className="mx-auto h-12 w-12 text-[#6B7280] mb-4" />
-          <h3 className="text-lg font-semibold text-[#1A1A1A]">No stores yet</h3>
+          <h3 className="text-lg font-semibold text-[#1A1A1A]">No store yet</h3>
           <p className="mt-2 text-sm text-[#6B7280] max-w-sm mx-auto">
-            Create your first store to start selling products online.
+            Each account can create only one store. Create your first store to start selling products online.
           </p>
           <Button className="mt-6" onClick={() => setIsFormOpen(true)}>
             <Plus className="h-4 w-4" />
