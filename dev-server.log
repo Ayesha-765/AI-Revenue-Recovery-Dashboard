@@ -1,0 +1,37 @@
+
+> my-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.108:3000
+- Environments: .env.local
+✓ Ready in 872ms
+
+ GET /dashboard/revenue 200 in 645ms (next.js: 299ms, application-code: 346ms)
+ GET /?login=1 200 in 71ms (next.js: 34ms, application-code: 38ms)
+ GET /?login=1 200 in 41ms (next.js: 7ms, application-code: 34ms)
+ GET /dashboard/store 200 in 74ms (next.js: 42ms, application-code: 32ms)
+ GET /dashboard/products 200 in 82ms (next.js: 45ms, application-code: 37ms)
+ GET /dashboard/orders 200 in 89ms (next.js: 51ms, application-code: 39ms)
+ GET /dashboard/problems 200 in 87ms (next.js: 50ms, application-code: 37ms)
+ GET /dashboard/customers 200 in 83ms (next.js: 49ms, application-code: 35ms)
+ GET /dashboard/store 200 in 45ms (next.js: 6ms, application-code: 39ms)
+ GET /dashboard/revenue 200 in 50ms (next.js: 8ms, application-code: 42ms)
+ GET /dashboard 200 in 80ms (next.js: 53ms, application-code: 27ms)
+ GET /dashboard/problems 200 in 42ms (next.js: 7ms, application-code: 35ms)
+ GET /dashboard/insights 404 in 87ms (next.js: 49ms, application-code: 38ms)
+ GET /dashboard/insights 404 in 134ms (next.js: 13ms, application-code: 120ms)
+ GET /dashboard/problems 200 in 108ms (next.js: 6ms, application-code: 102ms)
+ GET /?login=1 200 in 34ms (next.js: 6ms, application-code: 28ms)
+ GET /dashboard 200 in 43ms (next.js: 6ms, application-code: 37ms)
+ GET /dashboard/customers 200 in 37ms (next.js: 5ms, application-code: 32ms)
+ GET /dashboard/reports 404 in 38ms (next.js: 6ms, application-code: 32ms)
+ GET /dashboard/reports 404 in 70ms (next.js: 9ms, application-code: 61ms)
+ GET /dashboard/customers 200 in 86ms (next.js: 5ms, application-code: 80ms)
+ GET /?login=1 200 in 29ms (next.js: 7ms, application-code: 22ms)
+ GET /dashboard 200 in 34ms (next.js: 5ms, application-code: 29ms)
+ GET /dashboard/settings 200 in 76ms (next.js: 47ms, application-code: 29ms)
+ GET /dashboard 200 in 34ms (next.js: 5ms, application-code: 28ms)
+
+E:\newtransfer\WMA\nextJS\pt_15\my-app>

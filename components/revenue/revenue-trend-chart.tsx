@@ -24,14 +24,17 @@ function RevenueTrendChart({
 
   const maxValue = Math.max(...data.map((d) => d.value)) * 1.1;
   const minValue = Math.min(...data.map((d) => d.value)) * 0.9;
-  const valueRange = maxValue - minValue;
+  const valueRange = Math.max(maxValue - minValue, 1);
 
-  const points = data.map((d, i) => ({
-    x: padding.left + (i / (data.length - 1)) * chartWidth,
-    y: padding.top + chartHeight - ((d.value - minValue) / valueRange) * chartHeight,
-    value: d.value,
-    label: d.label,
-  }));
+  const points = data.map((d, i) => {
+    const x = data.length === 1 ? chartWidth / 2 : (i / (data.length - 1)) * chartWidth;
+    return {
+      x: padding.left + x,
+      y: padding.top + chartHeight - ((d.value - minValue) / valueRange) * chartHeight,
+      value: d.value,
+      label: d.label,
+    };
+  });
 
   const pathD = points
     .map((point, i) => {

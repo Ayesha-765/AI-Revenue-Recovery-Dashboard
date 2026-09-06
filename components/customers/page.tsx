@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -111,52 +112,86 @@ function CustomersPage() {
   }, [searchQuery, statusFilter, sortBy]);
 
   const totalCustomers = customers.length;
-  const newCustomers = customers.filter((c) => getCustomerStatus(c) === "new").length;
-  const activeCustomers = customers.filter((c) => getCustomerStatus(c) === "active").length;
+  const newCustomers = customers.filter((c) => c.totalOrders === 0).length;
   const returningCustomers = customers.filter((c) => c.totalOrders > 1).length;
   const totalRevenue = customers.reduce((sum, c) => sum + c.totalSpent, 0);
   const averageCustomerValue = totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
+
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+  const currentMonthCustomers = customers.filter((c) => new Date(c.createdAt) >= currentMonthStart);
+  const lastMonthCustomers = customers.filter((c) => {
+    const d = new Date(c.createdAt);
+    return d >= lastMonthStart && d <= lastMonthEnd;
+  });
+
+  const currentMonthNewCustomers = currentMonthCustomers.filter((c) => c.totalOrders === 0).length;
+  const lastMonthNewCustomers = lastMonthCustomers.filter((c) => c.totalOrders === 0).length;
+
+  const currentMonthReturning = customers.filter((c) => {
+    if (!c.lastOrderAt) return false;
+    const d = new Date(c.lastOrderAt);
+    return d >= currentMonthStart && new Date(c.createdAt) < currentMonthStart;
+  }).length;
+  const lastMonthReturning = customers.filter((c) => {
+    if (!c.lastOrderAt) return false;
+    const d = new Date(c.lastOrderAt);
+    return d >= lastMonthStart && d <= lastMonthEnd && new Date(c.createdAt) < lastMonthStart;
+  }).length;
+
+  const currentMonthAvgValue = currentMonthCustomers.length > 0
+    ? currentMonthCustomers.reduce((sum, c) => sum + c.totalSpent, 0) / currentMonthCustomers.length
+    : 0;
+  const lastMonthAvgValue = lastMonthCustomers.length > 0
+    ? lastMonthCustomers.reduce((sum, c) => sum + c.totalSpent, 0) / lastMonthCustomers.length
+    : 0;
+
+  const totalChange = lastMonthCustomers.length > 0 ? ((currentMonthCustomers.length - lastMonthCustomers.length) / lastMonthCustomers.length) * 100 : 0;
+  const newChange = lastMonthNewCustomers > 0 ? ((currentMonthNewCustomers - lastMonthNewCustomers) / lastMonthNewCustomers) * 100 : 0;
+  const returningChange = lastMonthReturning > 0 ? ((currentMonthReturning - lastMonthReturning) / lastMonthReturning) * 100 : 0;
+  const avgChange = lastMonthAvgValue > 0 ? ((currentMonthAvgValue - lastMonthAvgValue) / lastMonthAvgValue) * 100 : 0;
+
+  const trend = (change: number) => {
+    if (change > 0) return "up" as const;
+    if (change < 0) return "down" as const;
+    return "neutral" as const;
+  };
 
   const kpiStats = [
     {
       title: "Total Customers",
       value: totalCustomers.toLocaleString(),
-      changeLabel: "vs last month",
+      ...(lastMonthCustomers.length > 0 ? { change: totalChange, changeLabel: "vs last month", trend: trend(totalChange), previousValue: lastMonthCustomers.length.toLocaleString() } : { previousValue: "—" }),
       icon: Users,
       iconColor: "text-[#7C5CFC]",
       iconBg: "bg-[#7C5CFC]/10",
-      trend: "neutral" as const,
-      previousValue: "—",
     },
     {
       title: "New Customers",
       value: newCustomers.toLocaleString(),
-      changeLabel: "vs last month",
+      ...(lastMonthNewCustomers > 0 ? { change: newChange, changeLabel: "vs last month", trend: trend(newChange), previousValue: lastMonthNewCustomers.toLocaleString() } : { previousValue: "—" }),
       icon: UserPlus,
       iconColor: "text-[#00C48C]",
       iconBg: "bg-[#00C48C]/10",
-      trend: "neutral" as const,
-      previousValue: "—",
     },
     {
       title: "Returning Customers",
       value: returningCustomers.toLocaleString(),
-      changeLabel: "vs last month",
+      ...(lastMonthReturning > 0 ? { change: returningChange, changeLabel: "vs last month", trend: trend(returningChange), previousValue: lastMonthReturning.toLocaleString() } : { previousValue: "—" }),
       icon: TrendingUp,
       iconColor: "text-[#4F8CFF]",
       iconBg: "bg-[#4F8CFF]/10",
-      trend: "neutral" as const,
-      previousValue: "—",
     },
     {
       title: "Avg. Customer Value",
       value: `$${averageCustomerValue.toFixed(2)}`,
-      changeLabel: "vs last month",
+      ...(lastMonthAvgValue > 0 ? { change: avgChange, changeLabel: "vs last month", trend: trend(avgChange), previousValue: `$${lastMonthAvgValue.toFixed(2)}` } : { previousValue: "—" }),
       icon: Users,
       iconColor: "text-[#FFB800]",
       iconBg: "bg-[#FFB800]/10",
-      trend: "neutral" as const,
-      previousValue: "—",
     },
   ];
 
@@ -241,12 +276,12 @@ function CustomersPage() {
           title="No store found"
           description="You need to create a store before viewing customers. Go to the Store page to get started."
           action={
-            <a
+            <Link
               href="/dashboard/store"
               className="inline-flex items-center justify-center rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2.5 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]"
             >
               Create Your Store
-            </a>
+            </Link>
           }
         />
       </div>

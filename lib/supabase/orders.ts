@@ -112,6 +112,7 @@ export async function fetchOrdersByStore(storeId: string): Promise<Order[]> {
       .order("created_at", { ascending: false });
 
     if (error || !orders) {
+      console.error("[fetchOrdersByStore] Supabase error", { error, storeId });
       return [];
     }
 

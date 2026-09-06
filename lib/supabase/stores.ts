@@ -51,6 +51,7 @@ export async function fetchStoreByOwnerId(ownerId: string): Promise<Store | null
       .single();
 
     if (error || !data) {
+      console.error("[fetchStoreByOwnerId] Supabase error", { error, ownerId });
       return null;
     }
 

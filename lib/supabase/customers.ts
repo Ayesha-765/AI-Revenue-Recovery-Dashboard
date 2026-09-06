@@ -147,6 +147,7 @@ export async function fetchCustomersByStore(storeId: string): Promise<Customer[]
       .order("created_at", { ascending: false });
 
     if (error || !data) {
+      console.error("[fetchCustomersByStore] Supabase error", { error, storeId });
       return [];
     }
 

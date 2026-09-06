@@ -1,21 +1,16 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   SectionHeader,
   FilterTabs,
   RevenueCard,
   RevenueTrendChart,
   RevenueBreakdownCard,
-  TopProductsTable,
-  RevenueLeakCard,
-  AIInsightCard,
-  ForecastCard,
-  TimelineCard,
 } from "@/components/revenue";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
 import {
   DollarSign,
   Wallet,
@@ -24,6 +19,7 @@ import {
   RefreshCw,
   Download,
   Inbox,
+  Sparkles,
 } from "lucide-react";
 import { fetchStoreByOwnerId } from "@/lib/supabase/stores";
 import { fetchOrdersByStore } from "@/lib/supabase/orders";
@@ -72,143 +68,183 @@ function RevenuePage() {
     };
   }, []);
 
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+  const currentMonthOrders = orders.filter((o) => new Date(o.createdAt) >= currentMonthStart);
+  const lastMonthOrders = orders.filter((o) => {
+    const d = new Date(o.createdAt);
+    return d >= lastMonthStart && d <= lastMonthEnd;
+  });
+
   const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+  const currentRevenue = currentMonthOrders.reduce((sum, o) => sum + o.total, 0);
+  const lastRevenue = lastMonthOrders.reduce((sum, o) => sum + o.total, 0);
   const netRevenue = totalRevenue;
-  const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+  const avgOrderValue = currentMonthOrders.length > 0 ? currentRevenue / currentMonthOrders.length : 0;
+  const lastAvgOrderValue = lastMonthOrders.length > 0 ? lastRevenue / lastMonthOrders.length : 0;
+
+  const revenueChange = lastRevenue > 0 ? ((currentRevenue - lastRevenue) / lastRevenue) * 100 : 0;
+  const netChange = lastRevenue > 0 ? ((currentRevenue - lastRevenue) / lastRevenue) * 100 : 0;
+  const aovChange = lastAvgOrderValue > 0 ? ((avgOrderValue - lastAvgOrderValue) / lastAvgOrderValue) * 100 : 0;
+  const revenueGrowth = lastRevenue > 0 ? ((totalRevenue - lastRevenue) / lastRevenue) * 100 : totalRevenue > 0 ? 100 : 0;
+
+  const trend = (change: number) => {
+    if (change > 0) return "up" as const;
+    if (change < 0) return "down" as const;
+    return "neutral" as const;
+  };
 
   const kpiStats = [
     {
       title: "Total Revenue",
       value: `$${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change: totalRevenue > 0 ? 12.5 : 0,
-      changeLabel: "vs last month",
+      ...(lastRevenue > 0 ? { change: revenueChange, changeLabel: "vs last month", trend: trend(revenueChange), previousValue: `$${lastRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` } : { previousValue: "—" }),
       icon: DollarSign,
       iconColor: "text-[#7C5CFC]",
       iconBg: "bg-[#7C5CFC]/10",
-      trend: totalRevenue > 0 ? ("up" as const) : ("neutral" as const),
-      previousValue: totalRevenue > 0 ? `$${(totalRevenue * 0.9).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "$0",
     },
     {
       title: "Net Revenue",
       value: `$${netRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change: netRevenue > 0 ? 9.8 : 0,
-      changeLabel: "vs last month",
+      ...(lastRevenue > 0 ? { change: netChange, changeLabel: "vs last month", trend: trend(netChange), previousValue: `$${lastRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` } : { previousValue: "—" }),
       icon: Wallet,
       iconColor: "text-[#00C48C]",
       iconBg: "bg-[#00C48C]/10",
-      trend: netRevenue > 0 ? ("up" as const) : ("neutral" as const),
-      previousValue: netRevenue > 0 ? `$${(netRevenue * 0.9).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "$0",
     },
     {
       title: "Average Order Value",
       value: `$${avgOrderValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change: avgOrderValue > 0 ? 4.2 : 0,
-      changeLabel: "vs last month",
+      ...(lastAvgOrderValue > 0 ? { change: aovChange, changeLabel: "vs last month", trend: trend(aovChange), previousValue: `$${lastAvgOrderValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` } : { previousValue: "—" }),
       icon: BarChart3,
       iconColor: "text-[#74B9FF]",
       iconBg: "bg-[#74B9FF]/10",
-      trend: avgOrderValue > 0 ? ("up" as const) : ("neutral" as const),
-      previousValue: avgOrderValue > 0 ? `$${(avgOrderValue * 0.95).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "$0",
     },
     {
       title: "Revenue Growth",
-      value: totalRevenue > 0 ? "18.5%" : "0%",
-      change: 2.3,
-      changeLabel: "vs last month",
+      value: totalRevenue > 0 ? `${revenueGrowth.toFixed(1)}%` : "0%",
+      ...(lastRevenue > 0 ? { change: revenueGrowth, changeLabel: "vs last month", trend: trend(revenueGrowth) } : {}),
       icon: TrendingUp,
       iconColor: "text-[#FFB800]",
       iconBg: "bg-[#FFB800]/10",
-      trend: totalRevenue > 0 ? ("up" as const) : ("neutral" as const),
     },
   ];
 
-  const dailyData = [
-    { label: "Mon", value: 4200 },
-    { label: "Tue", value: 3800 },
-    { label: "Wed", value: 5100 },
-    { label: "Thu", value: 4600 },
-    { label: "Fri", value: 5900 },
-    { label: "Sat", value: 6200 },
-    { label: "Sun", value: 5400 },
-  ];
+  const generateChartData = React.useCallback(
+    (period: string) => {
+      if (orders.length === 0) {
+        return [];
+      }
 
-  const weeklyData = [
-    { label: "W1", value: 28500 },
-    { label: "W2", value: 32100 },
-    { label: "W3", value: 29800 },
-    { label: "W4", value: 35900 },
-    { label: "W5", value: 41200 },
-    { label: "W6", value: 38500 },
-  ];
+      if (period === "daily") {
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const data: { label: string; value: number }[] = [];
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dayStart = new Date(now.getFullYear(), now.getMonth(), day);
+          const dayEnd = new Date(now.getFullYear(), now.getMonth(), day, 23, 59, 59, 999);
+          if (dayStart > now) break;
+          const dayRevenue = orders
+            .filter((o) => {
+              const d = new Date(o.createdAt);
+              return d >= dayStart && d <= dayEnd;
+            })
+            .reduce((sum, o) => sum + o.total, 0);
+          data.push({ label: day.toString(), value: dayRevenue });
+        }
+        return data;
+      }
 
-  const monthlyData = [
-    { label: "Jan", value: 98000 },
-    { label: "Feb", value: 112000 },
-    { label: "Mar", value: 105000 },
-    { label: "Apr", value: 128000 },
-    { label: "May", value: 142000 },
-    { label: "Jun", value: 156000 },
-  ];
+      if (period === "weekly") {
+        const yearStart = new Date(now.getFullYear(), 0, 1);
+        const weeks: { label: string; value: number }[] = [];
+        for (let week = 1; week <= 52; week++) {
+          const weekStart = new Date(yearStart);
+          weekStart.setDate(yearStart.getDate() + (week - 1) * 7);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          if (weekStart > now) break;
+          const weekRevenue = orders
+            .filter((o) => {
+              const d = new Date(o.createdAt);
+              return d >= weekStart && d <= weekEnd;
+            })
+            .reduce((sum, o) => sum + o.total, 0);
+          weeks.push({ label: `W${week}`, value: weekRevenue });
+        }
+        return weeks;
+      }
 
-  const yearlyData = [
-    { label: "2019", value: 520000 },
-    { label: "2020", value: 680000 },
-    { label: "2021", value: 850000 },
-    { label: "2022", value: 1020000 },
-    { label: "2023", value: 1280000 },
-    { label: "2024", value: 1560000 },
-  ];
+      if (period === "monthly") {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const data: { label: string; value: number }[] = [];
+        for (let month = 0; month < 12; month++) {
+          const monthStart = new Date(now.getFullYear(), month, 1);
+          const monthEnd = new Date(now.getFullYear(), month + 1, 0, 23, 59, 59, 999);
+          if (monthStart > now) break;
+          const monthRevenue = orders
+            .filter((o) => {
+              const d = new Date(o.createdAt);
+              return d >= monthStart && d <= monthEnd;
+            })
+            .reduce((sum, o) => sum + o.total, 0);
+          data.push({ label: months[month], value: monthRevenue });
+        }
+        return data;
+      }
 
-  const chartDataMap: Record<string, typeof dailyData> = {
-    daily: dailyData,
-    weekly: weeklyData,
-    monthly: monthlyData,
-    yearly: yearlyData,
-  };
+      if (period === "yearly") {
+        const data: { label: string; value: number }[] = [];
+        for (let year = now.getFullYear() - 5; year <= now.getFullYear(); year++) {
+          const yearStart = new Date(year, 0, 1);
+          const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
+          const yearRevenue = orders
+            .filter((o) => {
+              const d = new Date(o.createdAt);
+              return d >= yearStart && d <= yearEnd;
+            })
+            .reduce((sum, o) => sum + o.total, 0);
+          data.push({ label: year.toString(), value: yearRevenue });
+        }
+        return data;
+      }
+
+      return [];
+    },
+    [orders, now]
+  );
+
+  const chartData = generateChartData(chartPeriod);
+
+  const productRevenue = React.useMemo(() => {
+    const revenue = new Map<string, number>();
+    for (const order of orders) {
+      for (const item of order.items) {
+        const current = revenue.get(item.productName) || 0;
+        revenue.set(item.productName, current + item.subtotal);
+      }
+    }
+    const total = Array.from(revenue.values()).reduce((sum, v) => sum + v, 0);
+    return Array.from(revenue.entries())
+      .map(([label, value]) => ({
+        label,
+        value: `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        percentage: total > 0 ? (value / total) * 100 : 0,
+        trend: "neutral" as const,
+      }))
+      .sort((a, b) => {
+        const aVal = parseFloat(a.value.replace(/[$,]/g, ""));
+        const bVal = parseFloat(b.value.replace(/[$,]/g, ""));
+        return bVal - aVal;
+      });
+  }, [orders]);
 
   const chartTabs = [
     { label: "Daily", value: "daily" },
     { label: "Weekly", value: "weekly" },
     { label: "Monthly", value: "monthly" },
     { label: "Yearly", value: "yearly" },
-  ];
-
-  const salesChannels = [
-    { label: "Direct", value: "$48,200", percentage: 34, growth: 8.2, trend: "up" as const },
-    { label: "Organic Search", value: "$38,500", percentage: 27, growth: 12.5, trend: "up" as const },
-    { label: "Paid Ads", value: "$32,100", percentage: 23, growth: -2.4, trend: "down" as const },
-    { label: "Social Media", value: "$18,750", percentage: 13, growth: 5.1, trend: "up" as const },
-    { label: "Email", value: "$4,800", percentage: 3, growth: -0.8, trend: "neutral" as const },
-  ];
-
-  const products = [
-    { label: "Electronics", value: "$52,300", percentage: 37, growth: 14.2, trend: "up" as const },
-    { label: "Clothing", value: "$38,400", percentage: 27, growth: 6.8, trend: "up" as const },
-    { label: "Home & Garden", value: "$28,100", percentage: 20, growth: -1.2, trend: "down" as const },
-    { label: "Beauty", value: "$15,800", percentage: 11, growth: 22.5, trend: "up" as const },
-    { label: "Sports", value: "$7,750", percentage: 5, growth: 3.1, trend: "up" as const },
-  ];
-
-  const categories = [
-    { label: "New Arrivals", value: "$45,600", percentage: 32, growth: 18.4, trend: "up" as const },
-    { label: "Best Sellers", value: "$52,300", percentage: 37, growth: 8.2, trend: "up" as const },
-    { label: "Sale Items", value: "$28,100", percentage: 20, growth: -5.4, trend: "down" as const },
-    { label: "Clearance", value: "$16,350", percentage: 11, growth: 2.1, trend: "up" as const },
-  ];
-
-  const countries = [
-    { label: "United States", value: "$68,400", percentage: 48, growth: 10.5, trend: "up" as const },
-    { label: "United Kingdom", value: "$24,200", percentage: 17, growth: 6.8, trend: "up" as const },
-    { label: "Canada", value: "$18,600", percentage: 13, growth: 12.2, trend: "up" as const },
-    { label: "Germany", value: "$14,300", percentage: 10, growth: -1.5, trend: "down" as const },
-    { label: "Australia", value: "$9,850", percentage: 7, growth: 4.8, trend: "up" as const },
-    { label: "Others", value: "$7,000", percentage: 5, growth: 2.3, trend: "up" as const },
-  ];
-
-  const devices = [
-    { label: "Mobile", value: "$56,800", percentage: 40, growth: 15.2, trend: "up" as const },
-    { label: "Desktop", value: "$62,400", percentage: 44, growth: 8.5, trend: "up" as const },
-    { label: "Tablet", value: "$23,150", percentage: 16, growth: -2.8, trend: "down" as const },
   ];
 
   if (isLoading) {
@@ -233,12 +269,12 @@ function RevenuePage() {
           title="No store found"
           description="You need to create a store before viewing revenue. Go to the Store page to get started."
           action={
-            <a
+            <Link
               href="/dashboard/store"
               className="inline-flex items-center justify-center rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2.5 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]"
             >
               Create Your Store
-            </a>
+            </Link>
           }
         />
       </div>
@@ -293,69 +329,71 @@ function RevenuePage() {
           />
         </div>
         <Card padding="default">
-          <RevenueTrendChart data={chartDataMap[chartPeriod]} height={300} />
+          {chartData.length > 0 ? (
+            <RevenueTrendChart data={chartData} height={300} />
+          ) : (
+            <EmptyState
+              icon={BarChart3}
+              title="No revenue data yet"
+              description="Revenue trends will appear once you have order history."
+            />
+          )}
         </Card>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <RevenueBreakdownCard
-          title="Sales Channel"
-          description="Revenue by acquisition channel"
-          items={salesChannels}
-          icon={<BarChart3 className="h-5 w-5 text-[#7C5CFC]" />}
+          title="Products"
+          description="Revenue by product"
+          items={productRevenue}
+          icon={<TrendingUp className="h-5 w-5 text-[#00C48C]" />}
         />
         <RevenueBreakdownCard
-          title="Products"
-          description="Revenue by product category"
-          items={products}
-          icon={<TrendingUp className="h-5 w-5 text-[#00C48C]" />}
+          title="Sales Channel"
+          description="Revenue by acquisition channel"
+          items={[]}
+          icon={<BarChart3 className="h-5 w-5 text-[#7C5CFC]" />}
         />
         <RevenueBreakdownCard
           title="Categories"
           description="Revenue by product category"
-          items={categories}
+          items={[]}
           icon={<BarChart3 className="h-5 w-5 text-[#74B9FF]" />}
         />
         <RevenueBreakdownCard
           title="Countries"
           description="Revenue by geographic region"
-          items={countries}
+          items={[]}
           icon={<DollarSign className="h-5 w-5 text-[#FFB800]" />}
         />
         <RevenueBreakdownCard
           title="Devices"
           description="Revenue by device type"
-          items={devices}
+          items={[]}
           icon={<TrendingUp className="h-5 w-5 text-[#4F8CFF]" />}
         />
       </section>
 
-      <section>
-        <TopProductsTable />
-      </section>
-
-      <section>
-        <RevenueLeakCard />
-      </section>
-
-      <section>
-        <AIInsightCard />
-      </section>
-
-      <section>
-        <ForecastCard />
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-2">
-        <TimelineCard />
-        <EmptyState
-          icon={Inbox}
-          title="No revenue data yet"
-          description="Connect your store to start tracking revenue analytics and insights."
-          action={
-            <Button variant="outline">Connect Store</Button>
-          }
-        />
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-[#7C5CFC]" />
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">AI Revenue Insights</h2>
+          </div>
+          <Link
+            href="/dashboard/insights"
+            className="inline-flex items-center gap-2 rounded-[14px] border border-[#7C5CFC] bg-[#7C5CFC] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#6B5DFF]"
+          >
+            Open AI Insights
+          </Link>
+        </div>
+        <Card padding="default">
+          <EmptyState
+            icon={Sparkles}
+            title="AI analysis available"
+            description="Visit AI Insights for detailed revenue intelligence, problem analysis, and actionable recommendations powered by AI."
+          />
+        </Card>
       </section>
     </div>
   );

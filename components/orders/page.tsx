@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   OrderStatCard,
@@ -192,7 +193,7 @@ function OrdersPage() {
     {
       title: "Pending",
       count: pendingOrders,
-      percentage: totalOrders > 0 ? (pendingOrders / totalOrders) * 100 : 0,
+      percentage: totalOrders > 0 ? Number(((pendingOrders / totalOrders) * 100).toFixed(1)) : 0,
       color: "#FFB800",
       bgColor: "bg-[#FFB800]/10",
       icon: <Clock className="h-5 w-5 text-[#FFB800]" />,
@@ -200,7 +201,7 @@ function OrdersPage() {
     {
       title: "Processing",
       count: processingOrders,
-      percentage: totalOrders > 0 ? (processingOrders / totalOrders) * 100 : 0,
+      percentage: totalOrders > 0 ? Number(((processingOrders / totalOrders) * 100).toFixed(1)) : 0,
       color: "#4F8CFF",
       bgColor: "bg-[#4F8CFF]/10",
       icon: <Truck className="h-5 w-5 text-[#4F8CFF]" />,
@@ -208,7 +209,7 @@ function OrdersPage() {
     {
       title: "Shipped",
       count: shippedOrders,
-      percentage: totalOrders > 0 ? (shippedOrders / totalOrders) * 100 : 0,
+      percentage: totalOrders > 0 ? Number(((shippedOrders / totalOrders) * 100).toFixed(1)) : 0,
       color: "#7C5CFC",
       bgColor: "bg-[#7C5CFC]/10",
       icon: <Truck className="h-5 w-5 text-[#7C5CFC]" />,
@@ -216,7 +217,7 @@ function OrdersPage() {
     {
       title: "Delivered",
       count: completedOrders,
-      percentage: totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0,
+      percentage: totalOrders > 0 ? Number(((completedOrders / totalOrders) * 100).toFixed(1)) : 0,
       color: "#00C48C",
       bgColor: "bg-[#00C48C]/10",
       icon: <CheckCircle2 className="h-5 w-5 text-[#00C48C]" />,
@@ -224,7 +225,7 @@ function OrdersPage() {
     {
       title: "Cancelled",
       count: cancelledOrders,
-      percentage: totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0,
+      percentage: totalOrders > 0 ? Number(((cancelledOrders / totalOrders) * 100).toFixed(1)) : 0,
       color: "#FF5C5C",
       bgColor: "bg-[#FF5C5C]/10",
       icon: <XCircle className="h-5 w-5 text-[#FF5C5C]" />,
@@ -356,12 +357,12 @@ function OrdersPage() {
           title="No store found"
           description="You need to create a store before viewing orders. Go to the Store page to get started."
           action={
-            <a
+            <Link
               href="/dashboard/store"
               className="inline-flex items-center justify-center rounded-[14px] border border-[#E8ECF3] bg-white px-4 py-2.5 text-sm font-medium text-[#6B7280] transition-colors hover:border-[#7C5CFC] hover:text-[#7C5CFC]"
             >
               Create Your Store
-            </a>
+            </Link>
           }
         />
       </div>

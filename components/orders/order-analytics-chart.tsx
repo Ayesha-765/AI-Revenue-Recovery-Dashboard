@@ -22,16 +22,33 @@ function OrderAnalyticsChart({
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  const maxValue = Math.max(...data.map((d) => d.value)) * 1.1;
-  const minValue = Math.min(...data.map((d) => d.value)) * 0.9;
+  if (!data || data.length === 0) {
+    return (
+      <div className={cn("w-full flex items-center justify-center", className)} style={{ height }}>
+        <p className="text-sm text-[#6B7280]">No data available</p>
+      </div>
+    );
+  }
+
+  const values = data.map((d) => d.value);
+  const maxValue = Math.max(...values) * 1.1;
+  const minValue = Math.min(...values) * 0.9;
   const valueRange = maxValue - minValue;
 
-  const points = data.map((d, i) => ({
-    x: padding.left + (i / (data.length - 1)) * chartWidth,
-    y: padding.top + chartHeight - ((d.value - minValue) / valueRange) * chartHeight,
-    value: d.value,
-    label: d.label,
-  }));
+  const safeValueRange = Number.isFinite(valueRange) && valueRange > 0 ? valueRange : 1;
+  const safeMinValue = Number.isFinite(minValue) ? minValue : 0;
+  const safeMaxValue = Number.isFinite(maxValue) ? maxValue : 100;
+
+  const points = data.map((d, i) => {
+    const x = padding.left + (data.length > 1 ? (i / (data.length - 1)) * chartWidth : chartWidth / 2);
+    const y = padding.top + chartHeight - ((d.value - safeMinValue) / safeValueRange) * chartHeight;
+    return {
+      x: Number.isFinite(x) ? x : padding.left,
+      y: Number.isFinite(y) ? y : padding.top + chartHeight / 2,
+      value: d.value,
+      label: d.label,
+    };
+  });
 
   const pathD = points
     .map((point, i) => {
@@ -49,7 +66,7 @@ function OrderAnalyticsChart({
 
   const gridLines = 5;
   const yAxisLabels = Array.from({ length: gridLines }, (_, i) => {
-    const value = minValue + (valueRange * i) / (gridLines - 1);
+    const value = safeMinValue + (safeValueRange * i) / (gridLines - 1);
     const y = padding.top + chartHeight - (i / (gridLines - 1)) * chartHeight;
     return { value: Math.round(value), y };
   });
