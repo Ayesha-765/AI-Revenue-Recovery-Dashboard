@@ -473,25 +473,27 @@ function CustomersPage() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between border-t border-[#E8ECF3] px-6 py-4">
-            <p className="text-sm text-[#6B7280]">
-              Showing{" "}
-              <span className="font-medium text-[#1A1A1A]">
-                {processedCustomers.length > 0 ? (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1 : 0}
-              </span>{" "}
-              to{" "}
-              <span className="font-medium text-[#1A1A1A]">
-                {Math.min(safeCurrentPage * ITEMS_PER_PAGE, processedCustomers.length)}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium text-[#1A1A1A]">{processedCustomers.length}</span> customers
-            </p>
-            <Pagination
-              currentPage={safeCurrentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-[#E8ECF3] px-6 py-4">
+              <p className="text-sm text-[#6B7280]">
+                Showing{" "}
+                <span className="font-medium text-[#1A1A1A]">
+                  {processedCustomers.length > 0 ? (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1 : 0}
+                </span>{" "}
+                to{" "}
+                <span className="font-medium text-[#1A1A1A]">
+                  {Math.min(safeCurrentPage * ITEMS_PER_PAGE, processedCustomers.length)}
+                </span>{" "}
+                of{" "}
+                <span className="font-medium text-[#1A1A1A]">{processedCustomers.length}</span> customers
+              </p>
+              <Pagination
+                currentPage={safeCurrentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </Card>
       </section>
 

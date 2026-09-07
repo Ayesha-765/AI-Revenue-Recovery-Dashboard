@@ -1,7 +1,6 @@
 import * as React from "react";
-import { Search, Bell, ChevronDown, Menu, LogOut, User } from "lucide-react";
+import { ChevronDown, Menu, LogOut, User } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth/auth-provider";
 import Link from "next/link";
 
@@ -10,7 +9,6 @@ interface TopNavbarProps {
 }
 
 function TopNavbar({ onMenuClick }: TopNavbarProps) {
-  const [notifications] = React.useState(3);
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
   const { user, logout } = useAuth();
 
@@ -47,23 +45,6 @@ function TopNavbar({ onMenuClick }: TopNavbarProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="hidden md:flex">
-          <Input
-            icon={<Search className="h-4 w-4" />}
-            placeholder="Search anything..."
-            className="w-64"
-          />
-        </div>
-
-        <button className="relative flex h-9 w-9 items-center justify-center rounded-[10px] text-[#6B7280] hover:bg-[#F1F5F9] transition-colors">
-          <Bell className="h-5 w-5" />
-          {notifications > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#FF5C5C] text-[10px] font-medium text-white">
-              {notifications}
-            </span>
-          )}
-        </button>
-
         <div className="relative flex items-center gap-3 pl-3 border-l border-[#E8ECF3]">
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium text-[#1A1A1A]">{displayName}</p>

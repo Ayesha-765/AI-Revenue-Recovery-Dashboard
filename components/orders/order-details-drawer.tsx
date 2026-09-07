@@ -22,6 +22,8 @@ interface OrderDetailsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onAction?: () => void;
+  isProcessing?: boolean;
+  actionMessage?: { type: "success" | "error"; text: string } | null;
   className?: string;
 }
 
@@ -30,9 +32,22 @@ function OrderDetailsDrawer({
   isOpen,
   onClose,
   onAction,
+  isProcessing = false,
+  actionMessage,
   className,
 }: OrderDetailsDrawerProps) {
   if (!isOpen || !order) return null;
+
+  const getActionLabel = (status: string): string => {
+    if (status === "delivered") return "Completed";
+    if (status === "cancelled") return "Cancelled";
+    if (status === "pending" || status === "confirmed") return "Process Order";
+    if (status === "processing") return "Mark as Shipped";
+    if (status === "shipped") return "Mark as Delivered";
+    return "Update Status";
+  };
+
+  const canAct = order.fulfillmentStatus !== "delivered" && order.fulfillmentStatus !== "cancelled";
 
   return (
     <div className="fixed inset-0 z-50">
@@ -132,13 +147,31 @@ function OrderDetailsDrawer({
               </div>
             </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={onClose}>
-                Close
-              </Button>
-              <Button className="flex-1" onClick={onAction}>
-                Process Order
-              </Button>
+            <div className="space-y-3 pt-2">
+              {actionMessage && (
+                <div
+                  className={cn(
+                    "rounded-[10px] px-3 py-2 text-sm",
+                    actionMessage.type === "success"
+                      ? "bg-[#00C48C]/10 text-[#00C48C]"
+                      : "bg-[#FF5C5C]/10 text-[#FF5C5C]"
+                  )}
+                >
+                  {actionMessage.text}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={onClose} disabled={isProcessing}>
+                  Close
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={onAction}
+                  disabled={!canAct || isProcessing}
+                >
+                  {isProcessing ? "Updating..." : getActionLabel(order.fulfillmentStatus)}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

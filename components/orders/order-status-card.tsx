@@ -24,14 +24,14 @@ function OrderStatusCard({
   const safePercentage = Number.isFinite(percentage) ? percentage.toFixed(1) : "0.0";
 
   return (
-    <Card hoverable padding="default" className={cn("", className)}>
+    <Card hoverable padding="sm" className={cn("", className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]", bgColor)}>
             {icon}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-[#6B7280] truncate">{title}</p>
+            <p className="text-sm font-medium text-[#6B7280]">{title}</p>
             <p className="text-2xl font-bold text-[#1A1A1A] tracking-tight">{count}</p>
           </div>
         </div>

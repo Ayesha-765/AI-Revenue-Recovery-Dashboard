@@ -9,8 +9,10 @@ import {
   OrderAnalyticsChart,
   OrderTable,
   OrderAlertCard,
+  type OrderAlert,
   AIOrderInsightCard,
   ActivityTimeline,
+  type ActivityItem,
   CustomerInsights,
   OrderDetailsDrawer,
   FilterDropdown,
@@ -19,7 +21,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
-import { Inbox } from "lucide-react";
+import { Inbox, Sparkles } from "lucide-react";
 import {
   ShoppingCart,
   CheckCircle2,
@@ -30,7 +32,7 @@ import {
   Download,
 } from "lucide-react";
 import { fetchStoreByOwnerId } from "@/lib/supabase/stores";
-import { fetchOrdersByStore, fetchRevenueByStore } from "@/lib/supabase/orders";
+import { fetchOrdersByStore, fetchRevenueByStore, updateOrderStatus } from "@/lib/supabase/orders";
 import type { Order } from "@/components/orders/order-table";
 import { supabase } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -45,10 +47,27 @@ function OrdersPage() {
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+  const [dbOrders, setDbOrders] = React.useState<Awaited<ReturnType<typeof fetchOrdersByStore>>>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [storeId, setStoreId] = React.useState<string | null>(null);
+  const [showRecoveryPlan, setShowRecoveryPlan] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(1);
+  const orderTableRef = React.useRef<HTMLDivElement>(null);
+
+  const handleInvestigate = React.useCallback(() => {
+    setStatusFilter("pending");
+    setSearchQuery("");
+    setCurrentPage(1);
+    orderTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const handleGeneratePlan = React.useCallback(() => {
+    setShowRecoveryPlan(true);
+    setCurrentPage(1);
+    orderTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const [storeId, setStoreId] = React.useState<string | null>(null);
 
   const loadOrders = React.useCallback(async () => {
     try {
@@ -91,6 +110,7 @@ function OrdersPage() {
       });
 
       setAllOrders(mappedOrders);
+      setDbOrders(dbOrders);
       setError(null);
     } catch (err) {
       setError("Failed to load orders.");
@@ -98,6 +118,44 @@ function OrdersPage() {
       setIsLoading(false);
     }
   }, []);
+
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const [actionMessage, setActionMessage] = React.useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [updatingOrderId, setUpdatingOrderId] = React.useState<string | null>(null);
+
+  const handleInlineStatusUpdate = React.useCallback(async (orderId: string, newStatus: string) => {
+    setUpdatingOrderId(orderId);
+    const result = await updateOrderStatus(orderId, newStatus);
+    setUpdatingOrderId(null);
+    if (result.success) {
+      await loadOrders();
+    } else {
+      setActionMessage({ type: "error", text: result.error || "Failed to update order status." });
+    }
+  }, [loadOrders]);
+
+  const handleProcessOrder = React.useCallback(async (orderId: string, currentStatus: string) => {
+    let nextStatus: string | null = null;
+    if (currentStatus === "pending" || currentStatus === "confirmed") nextStatus = "processing";
+    else if (currentStatus === "processing") nextStatus = "shipped";
+    else if (currentStatus === "shipped") nextStatus = "delivered";
+    if (!nextStatus) {
+      setActionMessage({ type: "error", text: `Order is already ${currentStatus}.` });
+      return;
+    }
+
+    setIsProcessing(true);
+    setActionMessage(null);
+    const result = await updateOrderStatus(orderId, nextStatus);
+    setIsProcessing(false);
+
+    if (result.success) {
+      setActionMessage({ type: "success", text: `Order moved to "${nextStatus}".` });
+      await loadOrders();
+    } else {
+      setActionMessage({ type: "error", text: result.error || "Failed to update order." });
+    }
+  }, [loadOrders]);
 
   React.useEffect(() => {
     loadOrders();
@@ -232,6 +290,94 @@ function OrdersPage() {
     },
   ];
 
+  const orderAlerts = React.useMemo<OrderAlert[]>(() => {
+    if (allOrders.length === 0) return [];
+    const alerts: OrderAlert[] = [];
+
+    if (cancelledOrders > 0) {
+      const rate = (cancelledOrders / totalOrders) * 100;
+      alerts.push({
+        id: "cancellation-rate",
+        priority: rate > 15 ? "critical" : rate > 5 ? "high" : "medium",
+        title: `${cancelledOrders} orders cancelled`,
+        description: `Cancellation rate is ${rate.toFixed(1)}% of total orders. Review cancellation reasons and fulfillment.`,
+        estimatedImpact: `${cancelledOrders} orders lost`,
+      });
+    }
+
+    const failedPayments = allOrders.filter((o) => o.paymentStatus === "failed").length;
+    if (failedPayments > 0) {
+      const rate = (failedPayments / totalOrders) * 100;
+      alerts.push({
+        id: "failed-payments",
+        priority: rate > 10 ? "critical" : "high",
+        title: `${failedPayments} failed payments`,
+        description: `${rate.toFixed(1)}% of orders had failed payments. Check payment gateway configuration.`,
+        estimatedImpact: `${failedPayments} lost sales`,
+      });
+    }
+
+    const pendingRate = totalOrders > 0 ? (pendingOrders / totalOrders) * 100 : 0;
+    if (pendingOrders > 0 && pendingRate > 30) {
+      alerts.push({
+        id: "pending-backlog",
+        priority: pendingRate > 60 ? "high" : "medium",
+        title: `${pendingOrders} orders awaiting processing`,
+        description: `${pendingRate.toFixed(1)}% of orders are still pending. This may delay fulfillment.`,
+        estimatedImpact: "Slow fulfillment",
+      });
+    }
+
+    return alerts;
+  }, [allOrders, cancelledOrders, totalOrders, pendingOrders]);
+
+  const activityItems = React.useMemo<ActivityItem[]>(() => {
+    if (allOrders.length === 0) return [];
+    const items: ActivityItem[] = [];
+
+    const recent = [...allOrders]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+
+    recent.forEach((order) => {
+      let status: ActivityItem["status"] = "info";
+      if (order.paymentStatus === "paid" && order.fulfillmentStatus === "delivered") status = "success";
+      else if (order.paymentStatus === "failed" || order.fulfillmentStatus === "cancelled") status = "warning";
+      else if (order.fulfillmentStatus === "pending") status = "pending";
+
+      items.push({
+        id: order.id,
+        title: `Order ${order.id.slice(0, 8)} — ${order.fulfillmentStatus}`,
+        description: `${order.customer} • ${order.total}`,
+        timestamp: order.date,
+        status,
+        icon: status,
+      });
+    });
+
+    return items;
+  }, [allOrders]);
+
+  const customerInsightsData = React.useMemo(() => {
+    if (allOrders.length === 0) {
+      return { returning: 0, firstTime: 0, repeatRate: "0%" };
+    }
+    const customerOrdersMap = new Map<string, number>();
+    allOrders.forEach((o) => {
+      const key = o.customerEmail || o.customer;
+      customerOrdersMap.set(key, (customerOrdersMap.get(key) || 0) + 1);
+    });
+    const uniqueCustomers = customerOrdersMap.size;
+    const returning = [...customerOrdersMap.values()].filter((count) => count > 1).length;
+    const firstTime = uniqueCustomers - returning;
+    const repeatRate = uniqueCustomers > 0 ? (returning / uniqueCustomers) * 100 : 0;
+    return {
+      returning: uniqueCustomers > 0 ? Math.round((returning / uniqueCustomers) * 100) : 0,
+      firstTime: uniqueCustomers > 0 ? Math.round((firstTime / uniqueCustomers) * 100) : 0,
+      repeatRate: `${repeatRate.toFixed(1)}%`,
+    };
+  }, [allOrders]);
+
   const chartData = React.useMemo(() => {
     if (allOrders.length === 0) {
       return [];
@@ -331,9 +477,10 @@ function OrdersPage() {
     URL.revokeObjectURL(url);
   };
 
-  const selectedOrderDetail = selectedOrder
-    ? allOrders.find((o) => o.id === selectedOrder)
-    : null;
+  const selectedOrderDetail = React.useMemo(
+    () => (selectedOrder ? dbOrders.find((o) => o.id === selectedOrder) ?? null : null),
+    [selectedOrder, dbOrders]
+  );
 
   if (isLoading) {
     return (
@@ -417,7 +564,7 @@ function OrdersPage() {
 
       <section>
         <h2 className="text-lg font-semibold text-[#1A1A1A] mb-4">Order Status Overview</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {statusCards.map((status) => (
             <OrderStatusCard key={status.title} {...status} />
           ))}
@@ -471,10 +618,71 @@ function OrdersPage() {
         </Card>
       </section>
 
-      <section>
+      <section ref={orderTableRef}>
+        {showRecoveryPlan && (
+          <Card padding="default" className="mb-4 border-[#7C5CFC]/20 bg-gradient-to-br from-white to-[#7C5CFC]/5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[#7C5CFC]/10">
+                  <Sparkles className="h-5 w-5 text-[#7C5CFC]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-[#1A1A1A]">Recovery Plan</h3>
+                  <p className="text-sm text-[#6B7280] mt-1">
+                    Prioritized actions to improve order performance:
+                  </p>
+                  <ol className="mt-3 space-y-2 text-sm text-[#1A1A1A]">
+                    {cancelledOrders > 0 && (
+                      <li className="flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF5C5C]/10 text-xs font-medium text-[#FF5C5C]">1</span>
+                        <span>Address {cancelledOrders} cancelled orders: contact affected customers with a win-back offer.</span>
+                      </li>
+                    )}
+                    {pendingOrders > 0 && (
+                      <li className="flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFB800]/10 text-xs font-medium text-[#FFB800]">2</span>
+                        <span>Process {pendingOrders} pending orders within 24 hours to avoid further delays.</span>
+                      </li>
+                    )}
+                    {processingOrders > 0 && (
+                      <li className="flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4F8CFF]/10 text-xs font-medium text-[#4F8CFF]">3</span>
+                        <span>Move {processingOrders} processing orders to shipped within 48 hours.</span>
+                      </li>
+                    )}
+                    {shippedOrders > 0 && (
+                      <li className="flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/10 text-xs font-medium text-[#7C5CFC]">4</span>
+                        <span>Follow up on {shippedOrders} shipped orders to confirm delivery.</span>
+                      </li>
+                    )}
+                    {completedOrders > 0 && (
+                      <li className="flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00C48C]/10 text-xs font-medium text-[#00C48C]">5</span>
+                        <span>Send review requests to {completedOrders} delivered customers.</span>
+                      </li>
+                    )}
+                    {cancelledOrders === 0 && pendingOrders === 0 && processingOrders === 0 && shippedOrders === 0 && completedOrders === 0 && (
+                      <li className="text-sm text-[#6B7280]">No actions required — your orders are on track.</li>
+                    )}
+                  </ol>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRecoveryPlan(false)}
+                className="text-sm font-medium text-[#6B7280] hover:text-[#1A1A1A]"
+                aria-label="Dismiss recovery plan"
+              >
+                Dismiss
+              </button>
+            </div>
+          </Card>
+        )}
         <OrderTable
           orders={paginatedOrders}
           onViewOrder={setSelectedOrder}
+          onUpdateStatus={handleInlineStatusUpdate}
+          updatingOrderId={updatingOrderId}
           currentPage={safeCurrentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
@@ -483,54 +691,117 @@ function OrdersPage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <OrderAlertCard alerts={allOrders.length > 0 ? [] : undefined} />
-        <ActivityTimeline items={allOrders.length > 0 ? [] : undefined} />
+        <OrderAlertCard alerts={orderAlerts} />
+        <ActivityTimeline items={activityItems} />
       </section>
 
       <section>
         <CustomerInsights
-          returningCustomers={undefined}
-          firstTimeBuyers={undefined}
+          returningCustomers={customerInsightsData.returning}
+          firstTimeBuyers={customerInsightsData.firstTime}
           averageOrderValue={averageOrderValue}
-          repeatPurchaseRate={undefined}
+          repeatPurchaseRate={customerInsightsData.repeatRate}
         />
       </section>
 
       <section>
         <AIOrderInsightCard
-          title={allOrders.length >= 5 ? "Order Trend Analysis" : undefined}
+          title={allOrders.length > 0 ? "Order Performance Summary" : undefined}
           description={
-            allOrders.length >= 5
-              ? `AI is analyzing ${allOrders.length} orders for patterns. Check back for insights as more data becomes available.`
+            allOrders.length > 0
+              ? `Analyzed ${totalOrders} orders. ${completedOrders} delivered, ${pendingOrders + processingOrders + shippedOrders} in progress, ${cancelledOrders} cancelled.`
               : undefined
           }
-          estimatedImpact={allOrders.length >= 5 ? "Data points collected" : undefined}
-          estimatedValue={allOrders.length >= 5 ? `${allOrders.length} orders` : undefined}
+          estimatedImpact={
+            cancelledOrders > 0
+              ? `${cancelledOrders} orders at risk`
+              : pendingOrders > 0
+              ? `${pendingOrders} orders pending`
+              : "All orders on track"
+          }
+          estimatedValue={allOrders.length > 0 ? `${averageOrderValue} avg order` : undefined}
+          onInvestigate={handleInvestigate}
+          onGeneratePlan={handleGeneratePlan}
           recommendedActions={
-            allOrders.length >= 5
-              ? ["Continue monitoring order patterns", "Review fulfillment times", "Analyze payment success rates"]
+            allOrders.length > 0
+              ? (() => {
+                  const actions: string[] = [];
+                  if (cancelledOrders > 0) {
+                    actions.push(`Investigate why ${cancelledOrders} orders were cancelled`);
+                  }
+                  const failedPayments = allOrders.filter((o) => o.paymentStatus === "failed").length;
+                  if (failedPayments > 0) {
+                    actions.push(`Review ${failedPayments} failed payment transactions`);
+                  }
+                  if (pendingOrders > 0) {
+                    actions.push(`Process ${pendingOrders} pending orders to speed fulfillment`);
+                  }
+                  if (processingOrders > 0) {
+                    actions.push(`Update status on ${processingOrders} orders being processed`);
+                  }
+                  if (shippedOrders > 0) {
+                    actions.push(`Track ${shippedOrders} shipped orders to delivery`);
+                  }
+                  if (completedOrders > 0) {
+                    actions.push(`Engage ${completedOrders} delivered customers for reviews`);
+                  }
+                  if (actions.length === 0) {
+                    actions.push("Continue monitoring order patterns");
+                  }
+                  return actions.slice(0, 4);
+                })()
               : undefined
           }
         />
       </section>
 
       <OrderDetailsDrawer
-        order={selectedOrderDetail ? {
-          id: selectedOrderDetail.id,
-          customer: selectedOrderDetail.customer,
-          email: selectedOrderDetail.customerEmail,
-          phone: "",
-          products: [],
-          shippingAddress: "",
-          paymentMethod: selectedOrderDetail.paymentStatus === "paid" ? "Credit / Debit Card" : selectedOrderDetail.paymentStatus === "failed" ? "Payment Failed" : "Pending",
-          paymentStatus: selectedOrderDetail.paymentStatus,
-          fulfillmentStatus: selectedOrderDetail.fulfillmentStatus,
-          timeline: [],
-          notes: "",
-        } : undefined}
+        order={selectedOrderDetail ? (() => {
+          const full = selectedOrderDetail;
+          const address = [full.customerAddress, full.customerCity, full.customerPostalCode]
+            .filter(Boolean)
+            .join("\n") || "No shipping address on file";
+          const phone = full.customerPhone || "—";
+          const createdAt = new Date(full.createdAt);
+          const timeline = [
+            { status: "Order placed", date: createdAt.toLocaleString(), note: "Order was created" },
+            ...(full.status !== "pending"
+              ? [{ status: `Status: ${full.status}`, date: createdAt.toLocaleString(), note: `Order marked as ${full.status}` }]
+              : []),
+            ...(full.paymentStatus === "paid"
+              ? [{ status: "Payment received", date: createdAt.toLocaleString(), note: "Payment confirmed" }]
+              : []),
+          ];
+          return {
+            id: full.id,
+            customer: full.customerName,
+            email: full.customerEmail,
+            phone,
+            products: full.items.map((item) => ({
+              name: item.productName,
+              quantity: item.quantity,
+              price: `$${item.subtotal.toFixed(2)}`,
+            })),
+            shippingAddress: address,
+            paymentMethod: full.paymentStatus === "paid" ? "Credit / Debit Card" : full.paymentStatus === "failed" ? "Payment Failed" : "Pending",
+            paymentStatus: full.paymentStatus,
+            fulfillmentStatus: full.status,
+            timeline,
+            notes: "No notes for this order.",
+          };
+        })() : undefined}
         isOpen={!!selectedOrder}
-        onClose={() => setSelectedOrder(null)}
-        onAction={() => {}}
+        onClose={() => {
+          setSelectedOrder(null);
+          setActionMessage(null);
+        }}
+        onAction={() => {
+          if (selectedOrderDetail) {
+            handleProcessOrder(selectedOrderDetail.id, selectedOrderDetail.status);
+          }
+        }}
+        isProcessing={isProcessing}
+        actionMessage={actionMessage}
       />
     </div>
   );

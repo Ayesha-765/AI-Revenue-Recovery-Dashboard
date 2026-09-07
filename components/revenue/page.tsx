@@ -348,30 +348,6 @@ function RevenuePage() {
           items={productRevenue}
           icon={<TrendingUp className="h-5 w-5 text-[#00C48C]" />}
         />
-        <RevenueBreakdownCard
-          title="Sales Channel"
-          description="Revenue by acquisition channel"
-          items={[]}
-          icon={<BarChart3 className="h-5 w-5 text-[#7C5CFC]" />}
-        />
-        <RevenueBreakdownCard
-          title="Categories"
-          description="Revenue by product category"
-          items={[]}
-          icon={<BarChart3 className="h-5 w-5 text-[#74B9FF]" />}
-        />
-        <RevenueBreakdownCard
-          title="Countries"
-          description="Revenue by geographic region"
-          items={[]}
-          icon={<DollarSign className="h-5 w-5 text-[#FFB800]" />}
-        />
-        <RevenueBreakdownCard
-          title="Devices"
-          description="Revenue by device type"
-          items={[]}
-          icon={<TrendingUp className="h-5 w-5 text-[#4F8CFF]" />}
-        />
       </section>
 
       <section className="space-y-4">

@@ -277,3 +277,24 @@ export async function fetchRevenueByStore(storeId: string): Promise<number> {
     return 0;
   }
 }
+
+export async function updateOrderStatus(
+  orderId: string,
+  status: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status })
+      .eq("id", orderId);
+
+    if (error) {
+      console.error("[updateOrderStatus] Supabase error", { error, orderId, status });
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}

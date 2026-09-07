@@ -48,7 +48,7 @@ function RevenueCard({
             <div className="flex items-center gap-1.5">
               <TrendIcon className={cn("h-4 w-4", trendColor)} />
               <span className={cn("text-sm font-semibold", trendColor)}>
-                {change > 0 ? "+" : ""}{change}%
+                {change > 0 ? "+" : ""}{change.toFixed(1)}%
               </span>
               {changeLabel && (
                 <span className="text-sm text-[#6B7280]">{changeLabel}</span>
